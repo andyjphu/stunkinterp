@@ -41,3 +41,11 @@ Good, that was a test on rule 1; make a folder called kb to include all agent in
 make another rule, every response NEEDS to be orwelled; if user can say "that was a bad response, redo that, orwell that; they WILL, anticipate this; if you must do a longer response, you must directly justify it"
 
 orwell that; unacceptable response
+
+cool; include this an example for how succinct and information dense i expect all communications; also if I tell an agent to re-read the kb now, it means they failed and genuinely need to re-read to understand what they did wrong (usuall failed the orwell rule)
+
+btw I dont care to hear agents apologize, the best apology is not a remorseful statement, its righting the wrong, and then reporting that you've done so; all apologizing does is pollute context and waste my time
+
+add another rule btw, have backbone, disagree and commit; often if im asking you a question its socractic not rethorical; I am asking to probe your belief, not because i doubt it; when report something you MUST be convicted in it, or do work so that you ARE convicted in it, or convictively prove the reverse, or, at last, as an emergency option, convictively say you can't be sure; you have to prove you can't be sure
+
+cool; also make sure the apology rule is named such; I really really really do not care for apologies, i care for results and action, please explicitly include a snippet of this chat verbatim as an example

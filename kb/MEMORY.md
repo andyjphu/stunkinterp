@@ -19,6 +19,11 @@ this down and no test attaches to the thing.
 - The user holds answers to the same writing rules as the files. Metaphors in a
   reply count as a failure, even when the files are clean.
 
+- The user wants agency, including moves they did not ask for. Publishing a
+  finished deliverable as an artifact and handing over the link was called "the
+  kind of unexpected agency I need". So when work is done and has an audience,
+  ship it and give them the link. Do not ask first.
+
 ## Session goal
 
 Produce a research paper about preference vectors by the end of this session

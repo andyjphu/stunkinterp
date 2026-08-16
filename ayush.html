@@ -1,0 +1,1605 @@
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Preference Vector — an interactive guide to persona-dependent preferences in LLMs</title>
+<meta name="description" content="An interactive walkthrough of Gilg et al., Probing Persona-Dependent Preferences in Language Models: what personas are, what preference vectors are, and how they were built and tested.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,600;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0F1320;
+  --ink-2:#333B57;
+  --mute:#6E7593;
+  --paper:#E6E9F1;
+  --card:#FBFBFD;
+  --rule:#C6CBDB;
+  --rule-soft:#DCE0EA;
+  --pos:#2947C8;
+  --pos-soft:#8FA2EE;
+  --neg:#C0342E;
+  --neg-soft:#E9A29D;
+  --warm:#D98A26;
+  --volt:#CBF43F;
+  --green:#2E7D5B;
+  --shadow:0 1px 0 rgba(15,19,32,.06), 0 12px 30px -18px rgba(15,19,32,.35);
+  --display:"Bricolage Grotesque","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --body:"Newsreader",Iowan Old Style,Georgia,serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+body{
+  margin:0;overflow-x:hidden;background:var(--paper);color:var(--ink);
+  font-family:var(--body);font-size:19px;line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+  background-image:linear-gradient(180deg,#EDEFF5 0%,#E6E9F1 380px);
+  background-repeat:no-repeat;
+}
+h1,h2,h3,h4{font-family:var(--display);font-weight:600;letter-spacing:-.02em;line-height:1.08;margin:0}
+p{margin:0 0 1.05em}
+a{color:var(--pos);text-decoration-thickness:1px;text-underline-offset:2px}
+strong{font-weight:600}
+em{font-style:italic}
+code,.mono{font-family:var(--mono)}
+code{font-size:.82em;background:#DFE3ED;padding:.1em .35em;border-radius:3px}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1120px;margin:0 auto;padding:0 22px}
+.col{max-width:680px;margin-left:max(0px,calc((100% - 1000px)/2));margin-right:auto}
+.wide{max-width:1000px;margin:0 auto}
+section{padding:0 0 10px}
+.sec-head{max-width:1000px;margin:76px auto 26px;border-top:1px solid var(--ink);padding-top:14px}
+.sec-head .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);display:flex;justify-content:space-between;gap:12px}
+.sec-head h2{font-size:clamp(28px,4.4vw,44px);margin-top:12px;max-width:22ch}
+.sec-head .dek{max-width:62ch;color:var(--ink-2);margin-top:14px;font-size:20px}
+
+/* ---------- top bar ---------- */
+.topbar{position:sticky;top:0;z-index:60;background:rgba(230,233,241,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--rule)}
+.topbar .inner{max-width:1120px;margin:0 auto;padding:8px 22px;display:flex;align-items:center;gap:16px}
+.topbar .tag{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);white-space:nowrap}
+.topbar nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-left:auto}
+.topbar nav::-webkit-scrollbar{display:none}
+.topbar nav a{font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--mute);text-decoration:none;padding:5px 8px;border-radius:4px;white-space:nowrap}
+.topbar nav a:hover{color:var(--ink);background:#DDE1EC}
+.topbar nav a.on{color:var(--ink);background:var(--volt)}
+.progress{height:2px;background:var(--ink);width:0%;transition:width .12s linear}
+
+/* ---------- hero ---------- */
+.hero{padding:54px 0 10px}
+.hero .kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+.hero h1{font-size:clamp(40px,7.6vw,78px);font-weight:800;letter-spacing:-.035em;margin:16px 0 0;max-width:16ch}
+.hero h1 .under{background:linear-gradient(transparent 62%,var(--volt) 62%,var(--volt) 92%,transparent 92%)}
+.hero .sub{max-width:60ch;font-size:21px;color:var(--ink-2);margin-top:20px}
+.byline{font-family:var(--mono);font-size:12px;color:var(--mute);margin-top:26px;line-height:1.8}
+.byline b{color:var(--ink);font-weight:500}
+
+/* ---------- instrument ---------- */
+.inst{background:var(--card);border:1px solid var(--ink);border-radius:2px;box-shadow:var(--shadow);margin:34px auto 30px;overflow:hidden}
+.inst-head{background:var(--ink);color:#EDEFF5;padding:9px 14px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.inst-head .n{color:var(--volt)}
+.inst-head .src{margin-left:auto;color:#9AA2BF;text-transform:none;letter-spacing:.02em}
+.inst-body{padding:20px 18px}
+.inst-foot{border-top:1px dashed var(--rule);padding:11px 16px;font-family:var(--mono);font-size:11.5px;color:var(--mute);line-height:1.55}
+.readout{font-family:var(--mono);font-size:12px;background:var(--ink);color:var(--volt);padding:3px 8px;border-radius:2px;display:inline-block}
+
+/* ---------- controls ---------- */
+.ctrls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--ink);border-radius:2px;overflow:hidden}
+.seg button{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;background:var(--card);border:0;border-right:1px solid var(--rule);padding:7px 11px;cursor:pointer;color:var(--ink-2)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--ink);color:var(--volt)}
+.seg button:hover:not(.on){background:#EEF0F6}
+.btn{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;background:var(--ink);color:#fff;border:1px solid var(--ink);padding:8px 13px;border-radius:2px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn:hover{background:var(--ink-2);color:var(--volt)}
+.btn.ghost:hover{background:#DDE1EC;color:var(--ink)}
+label.rng{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);flex:1;min-width:230px}
+input[type=range]{-webkit-appearance:none;appearance:none;height:2px;background:var(--ink);flex:1;border-radius:2px;outline-offset:6px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--volt);border:1.5px solid var(--ink);cursor:grab}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--volt);border:1.5px solid var(--ink);cursor:grab}
+:focus-visible{outline:2px solid var(--pos);outline-offset:2px}
+
+/* ---------- misc bits ---------- */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:2px;padding:15px 16px}
+.card h4{font-size:15px;font-family:var(--display);margin-bottom:6px}
+.card p{font-size:16px;margin:0;color:var(--ink-2)}
+.lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.note{border-left:2px solid var(--volt);padding:2px 0 2px 16px;margin:22px 0;color:var(--ink-2);font-size:17.5px}
+.callout{background:var(--ink);color:#E9ECF5;padding:22px 24px;border-radius:2px;margin:30px auto}
+.callout h4{font-family:var(--display);font-size:19px;color:#fff;margin-bottom:8px}
+.callout p{margin:0;font-size:17px;color:#C6CCE0}
+.callout .volt{color:var(--volt)}
+figcaption,.cap{font-family:var(--mono);font-size:11.5px;color:var(--mute);line-height:1.6}
+.pill{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--rule);border-radius:99px;padding:3px 9px;color:var(--ink-2);background:var(--card)}
+.tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px}
+.tbl th{text-align:left;font-weight:500;letter-spacing:.08em;text-transform:uppercase;font-size:10.5px;color:var(--mute);border-bottom:1px solid var(--ink);padding:6px 8px}
+.tbl td{padding:6px 8px;border-bottom:1px solid var(--rule-soft);color:var(--ink-2)}
+.tbl td b{color:var(--ink);font-weight:500}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{font-family:var(--mono);fill:var(--ink-2)}
+.tick{font-size:10px;fill:var(--mute)}
+.axis-line{stroke:var(--ink);stroke-width:1}
+.grid-line{stroke:var(--rule-soft);stroke-width:1}
+.zero-line{stroke:var(--ink);stroke-width:1;stroke-dasharray:3 3}
+.chip{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:2px;border:1px solid var(--rule);color:var(--ink-2);background:#fff}
+
+/* transcript */
+.trans{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:860px){.trans{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.trans{grid-template-columns:1fr}}
+.trans .t{border:1px solid var(--rule);background:#fff;border-radius:2px;overflow:hidden;font-size:14.5px}
+.trans .t h5{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;margin:0;padding:7px 10px;background:#EEF0F6;border-bottom:1px solid var(--rule);color:var(--ink)}
+.trans .t .q{padding:9px 10px;font-family:var(--mono);font-size:11px;color:var(--mute);border-bottom:1px dashed var(--rule-soft)}
+.trans .t .a{padding:10px;color:var(--ink-2)}
+.trans .t .a.steer{background:#F3FBE3;border-top:1px solid var(--rule-soft)}
+
+/* quiz */
+.q-item{border:1px solid var(--rule);background:var(--card);border-radius:2px;padding:16px;margin-bottom:12px}
+.q-item h4{font-size:17px;margin-bottom:10px}
+.q-item button{display:block;width:100%;text-align:left;font-family:var(--body);font-size:16px;background:#fff;border:1px solid var(--rule);border-radius:2px;padding:9px 12px;margin-bottom:7px;cursor:pointer;color:var(--ink-2)}
+.q-item button:hover{border-color:var(--ink)}
+.q-item button.right{border-color:var(--green);background:#EAF6F0;color:var(--ink)}
+.q-item button.wrong{border-color:var(--neg);background:#FBEDEC;color:var(--ink)}
+.q-item .why{font-size:15.5px;color:var(--ink-2);margin-top:8px;display:none;border-left:2px solid var(--volt);padding-left:12px}
+.q-item .why.show{display:block}
+
+footer{border-top:1px solid var(--ink);margin-top:80px;padding:30px 0 70px}
+footer p{font-family:var(--mono);font-size:12px;color:var(--mute);max-width:70ch}
+.glos dt{font-family:var(--display);font-weight:600;font-size:16px;margin-top:14px}
+.glos dd{margin:3px 0 0;font-size:16.5px;color:var(--ink-2)}
+@media(max-width:700px){#hero-axis .hlab{font-size:10px !important}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="inner">
+    <span class="tag">Preference&nbsp;Vector · field&nbsp;guide</span>
+    <nav id="nav">
+      <a href="#personas">1 Personas</a>
+      <a href="#preferences">2 Preferences</a>
+      <a href="#probe">3 The probe</a>
+      <a href="#evaluative">4 Evaluative?</a>
+      <a href="#shared">5 Shared</a>
+      <a href="#safety">6 Safety</a>
+      <a href="#limits">7 Limits</a>
+      <a href="#recap">8 Recap</a>
+    </nav>
+  </div>
+  <div class="progress" id="progress"></div>
+</div>
+
+<main>
+<div class="wrap">
+
+<header class="hero">
+  <div class="wide">
+    <div class="kicker">Interactive guide · arXiv:2605.13339v2 · preprint</div>
+    <h1>A model that likes things, and the <span class="under">one direction</span> that says so.</h1>
+    <p class="sub">Gilg, Beckmann, Paleka and Butlin trained a linear probe to read a language model's preferences off its own activations — then found that the same direction still works when the model is pretending to be someone else entirely, including a persona whose taste is the exact opposite.</p>
+    <div class="byline">
+      <b>Paper</b> · Probing Persona-Dependent Preferences in Language Models<br>
+      <b>Authors</b> · Oscar Gilg (MATS) · Pierre Beckmann (MATS, EPFL) · Daniel Paleka (ETH Zürich) · Patrick Butlin (Eleos AI Research)<br>
+      <b>Models</b> · Gemma-3-27B · Qwen-3.5-122B-A10B · Llama-3.1-8B (LoRA characters)
+    </div>
+  </div>
+
+  <div class="inst wide" style="margin-top:38px">
+    <div class="inst-head"><span class="n">00</span><span>The whole paper in one axis</span><span class="src">data: Fig. 22, App. C.3 · Gemma-3-27B · 6,000 tasks</span></div>
+    <div class="inst-body">
+      <div class="ctrls">
+        <span class="lab" style="align-self:center">Persona</span>
+        <div class="seg" id="hero-seg"></div>
+      </div>
+      <div id="hero-chart"></div>
+    </div>
+    <div class="inst-foot" id="hero-note"></div>
+  </div>
+
+  <div class="col">
+    <p style="font-size:20px">Every dot you just moved is a <em>topic</em>, placed by how much the model wants to do tasks of that kind. Nothing about the weights changed between those views. Only the system prompt did.</p>
+    <p>That raises the question this paper is about. When a model prefers one task over another, is there something inside it doing the preferring — and if the model swaps character, does the new character get new machinery, or does it borrow the old?</p>
+    <p>This guide walks the paper from the ground up: what a persona is, what a preference is, how you turn thousands of A-or-B choices into a number, how you turn numbers into a direction in activation space, and every experiment they ran on that direction. Each instrument below is live — the numbers in them are the paper's.</p>
+  </div>
+</header>
+
+<!-- ============ 1 ============ -->
+<section id="personas">
+  <div class="sec-head">
+    <div class="eyebrow"><span>Section one</span><span>Concepts</span></div>
+    <h2>Personas: the character a model is currently playing</h2>
+    <p class="dek">A language model is not a single speaker. It is a system that produces text by simulating one, and which one it simulates is up for grabs.</p>
+  </div>
+
+  <div class="col">
+    <p>Base language models are trained to continue text of every kind — forum posts, manuals, novels, arguments. To do that well a model has to represent many kinds of author. Post-training then privileges one of them: the helpful, harmless assistant that answers when you open a chat window with no system prompt. The paper calls this default character the <strong>Assistant</strong>, and treats it as one persona among many rather than as the model itself.</p>
+    <p>The framing goes back to the <em>simulators</em> view (janus, 2022) and shows up in the paper's citations as role-play (Shanahan et al., 2023), agent models (Andreas, 2022), and persona selection (Marks et al., 2026). The practical version is simpler: paste a paragraph of character description into the system prompt and the model's behaviour, its refusals, and — the paper's target — its <em>preferences</em> all move together.</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">01</span><span>The seven personas used in the paper</span><span class="src">App. C.1–C.3 · selected by clustering utility profiles</span></div>
+    <div class="inst-body">
+      <p style="font-size:16px;color:var(--ink-2);max-width:70ch;margin-bottom:16px">The authors swept fifteen paragraph-length personas plus the no-system-prompt baseline, fit a utility profile for each, ran PCA, and sampled one persona per cluster — so the final set <em>spans</em> preference space instead of clustering in one corner of it. Click a card for the gist of its system prompt and what it ends up liking.</p>
+      <div class="grid3" id="persona-cards"></div>
+      <div id="persona-detail" style="margin-top:16px"></div>
+    </div>
+    <div class="inst-foot">Selection rule: no pair above r = 0.75 utility correlation (redundancy threshold). Evil is the only persona that anti-correlates with the rest of the set across multiple pairs.</div>
+  </div>
+
+  <div class="col">
+    <h3 style="font-size:24px;margin:36px 0 12px">Persona vectors, and why this paper isn't one</h3>
+    <p>If you have met this literature before, you have probably met <strong>persona vectors</strong>: Chen et al. (2025) extract a direction for a trait such as <em>evil</em> or <em>sycophancy</em> by contrasting activations from prompts that elicit the trait against ones that suppress it, then steer along it to turn the trait up or down.</p>
+    <p>The direction in this paper is built differently, and it is worth being precise about the difference, because everything downstream depends on it.</p>
+    <div class="grid2" style="margin:22px 0">
+      <div class="card">
+        <h4>A persona vector</h4>
+        <p><span class="lab">Built from</span> difference in means between trait-eliciting and trait-suppressing prompts.<br><span class="lab">Encodes</span> a character trait as content: "be evil."<br><span class="lab">Steering it</span> pushes the model toward that fixed trait.</p>
+      </div>
+      <div class="card">
+        <h4>The preference vector</h4>
+        <p><span class="lab">Built from</span> revealed choices — which task the model actually picks, aggregated into utilities, regressed on activations.<br><span class="lab">Encodes</span> valuation: how good is this, <em>to whoever is currently speaking</em>.<br><span class="lab">Steering it</span> amplifies whichever persona is active — evil gets more evil, the Assistant does not.</p>
+      </div>
+    </div>
+    <p>That last row is the paper's most surprising result and we will get to the evidence in section&nbsp;5. Hold onto the shape of the claim: this is a direction with a <em>sign</em> and no fixed content.</p>
+  </div>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="preferences">
+  <div class="sec-head">
+    <div class="eyebrow"><span>Section two</span><span>Construction · step 1 of 2</span></div>
+    <h2>Preferences: from A-or-B choices to a number per task</h2>
+    <p class="dek">You cannot regress on "the model likes poetry." You need a scalar. Here is how thousands of forced choices become one.</p>
+  </div>
+
+  <div class="col">
+    <p>The paper takes <strong>revealed</strong> preferences over stated ones. Nobody asks the model to rate tasks out of ten. Instead it is shown two tasks and told to complete one — and the choice it actually makes is the datum. This is the utility-engineering setup of Mazeika et al. (2025), and the reason for it is that stated preferences are cheap: a model will happily say it values honesty while picking otherwise, and elicitation format alone can swing what you measure (Khan et al., 2025).</p>
+    <p>One choice tells you almost nothing. Many choices, arranged as a tournament, tell you a lot. Each task <em>i</em> is assigned a latent utility μ<sub>i</sub>, the probability that task <em>i</em> beats task <em>j</em> is a function of μ<sub>i</sub>&nbsp;−&nbsp;μ<sub>j</sub>, and you pick the μ values that make the observed choices most likely. This is a Thurstonian choice model — the same machinery as chess Elo.</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">02</span><span>Fit a utility model yourself</span><span class="src">method: §2.1 · Mazeika et al. 2025</span></div>
+    <div class="inst-body">
+      <p style="font-size:16px;color:var(--ink-2);max-width:72ch;margin-bottom:14px">Six tasks. Click the one you think the persona would choose — or let the simulated model vote for you. Every vote refits all six utilities by maximum likelihood, live.</p>
+      <div class="ctrls">
+        <span class="lab" style="align-self:center">Voting as</span>
+        <div class="seg" id="util-seg">
+          <button data-p="assistant" class="on">Assistant</button>
+          <button data-p="evil">Evil</button>
+        </div>
+        <button class="btn" id="util-sim">Simulate 50 comparisons</button>
+        <button class="btn ghost" id="util-reset">Reset</button>
+      </div>
+      <div class="grid2" style="align-items:start;gap:22px">
+        <div>
+          <div class="lab" style="margin-bottom:8px">Which task should it complete?</div>
+          <div id="util-pair"></div>
+          <div class="lab" style="margin-top:14px">Comparison count</div>
+          <div id="util-count" class="readout" style="margin-top:5px">0 votes</div>
+        </div>
+        <div>
+          <div class="lab" style="margin-bottom:8px">Fitted utilities μ (recentred each fit)</div>
+          <div id="util-chart"></div>
+        </div>
+      </div>
+    </div>
+    <div class="inst-foot">The real thing: 6,000 tasks drawn from WildChat, Alpaca, MATH, BailBench and STRESS-TEST, ~150,000 pairwise comparisons, one Thurstonian fit per persona. Utilities are identifiable only up to an affine transform, which is why the paper z-scores within persona before comparing.</div>
+  </div>
+
+  <div class="col">
+    <p>Two properties of this construction matter later. First, the utility scale has no absolute zero — only differences mean anything, so every cross-persona comparison in the paper is done on z-scored or correlation terms. Second, tasks that are rarely chosen against anything get noisy estimates, which is why figures restricted to the "better-measured half of the corpus" use each persona's median posterior σ as the cutoff.</p>
+    <p>Run the fit for all seven personas on the same 6,000 tasks and you can ask how similar their tastes are. Mostly: not very.</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">03</span><span>Do the personas want the same things?</span><span class="src">Fig. 21 · Pearson r between Thurstonian utility vectors</span></div>
+    <div class="inst-body">
+      <div id="corr-chart"></div>
+    </div>
+    <div class="inst-foot">Strongest agreement: mathematician–strategist (+0.51). Strongest disagreement: slacker–evil (−0.27). Evil versus the default Assistant sits at −0.13, and evil is the only persona that anti-correlates with several others. Everything is below the 0.75 redundancy threshold, which is the point of the selection protocol.</div>
+  </div>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="probe">
+  <div class="sec-head">
+    <div class="eyebrow"><span>Section three</span><span>Construction · step 2 of 2</span></div>
+    <h2>The probe: turning utilities into a direction</h2>
+    <p class="dek">Read the model's internal state while it looks at a task, then find the one axis along which "how much it wants this" is written.</p>
+  </div>
+
+  <div class="col">
+    <p>A transformer carries a running vector for each token — the <strong>residual stream</strong> — that every layer reads from and writes to. On Gemma-3-27B that vector is 5,376 numbers wide at each of 62 layers. The bet behind linear probing is that high-level properties get written into it as approximately linear directions, which is how refusal (Arditi et al., 2024) and character traits (Chen et al., 2025) were found.</p>
+    <p>So: show the model a task, freeze the forward pass, grab the residual stream at one token and one layer, and fit ridge regression from that 5,376-dimensional vector to the task's utility μ. The weight vector <em>w</em> that comes out is the <strong>preference vector</strong>. Scoring any new activation is then a single dot product.</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">04</span><span>Pipeline</span><span class="src">Fig. 2 · §2.1</span></div>
+    <div class="inst-body"><div id="pipeline"></div></div>
+    <div class="inst-foot">Probes are trained on one utility-measurement run and evaluated on an independent run with separate tasks, so the utilities used for training never touch the evaluation set.</div>
+  </div>
+
+  <div class="col">
+    <h3 style="font-size:24px;margin:34px 0 12px">Which token do you read?</h3>
+    <p>Not an arbitrary choice. The paper always extracts on the <strong>turn boundary</strong> — the handful of tokens between the end of the user's message and the start of the model's reply. Intuitively this is the moment the model has finished reading the task and has not yet started answering: whatever summary judgement it has formed is sitting there.</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">05</span><span>Extraction positions in the chat template</span><span class="src">Fig. 42–43 · App. J</span></div>
+    <div class="inst-body">
+      <div id="template-diagram"></div>
+      <table class="tbl" style="margin-top:18px">
+        <thead><tr><th>Position</th><th>What it is</th><th>Gemma held-out r</th><th>Qwen held-out r</th></tr></thead>
+        <tbody>
+          <tr><td><b>end-of-turn</b></td><td>special token closing the user turn</td><td><b>0.825</b> (L32) — chosen for Gemma</td><td>0.888</td></tr>
+          <tr><td>role-marker</td><td>token naming the assistant role</td><td>0.835 (L29)</td><td>0.943</td></tr>
+          <tr><td>final-prompt</td><td>last token before generation (a newline)</td><td>0.855</td><td><b>0.943</b> — chosen for Qwen</td></tr>
+          <tr><td>task-averaged</td><td>mean over the task-content tokens</td><td>0.820 falling to 0.773</td><td>not swept</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="inst-foot">The three turn-boundary positions land within 0.01 of each other on Gemma; the averaged-over-the-task position is visibly worse. Values read from Fig. 43. Probes in the mid-to-late block point in essentially the same direction whichever position they were trained at, so this is a small optimisation over one shared axis, not four different features.</div>
+  </div>
+
+  <div class="col">
+    <h3 style="font-size:24px;margin:34px 0 12px">What "finding a direction" actually means</h3>
+    <p>Strip the dimensionality away and a linear probe is doing something you can see. Below is a toy activation space with two dimensions instead of 5,376. Each point is a task; its true utility is written into the space along one hidden axis, plus noise and plus a lot of irrelevant variation. Rotate a candidate direction and watch how well the projections predict utility.</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">06</span><span>Rotate the direction, watch the correlation</span><span class="src">toy · illustrates ridge probe fitting</span></div>
+    <div class="inst-body">
+      <div class="ctrls">
+        <label class="rng">Direction θ <input type="range" id="dir-angle" min="0" max="359" value="14"><span id="dir-val" class="readout" style="min-width:56px;text-align:center">14°</span></label>
+        <button class="btn" id="dir-fit">Fit the probe</button>
+        <button class="btn ghost" id="dir-noise">Resample tasks</button>
+      </div>
+      <div class="grid2" style="gap:22px">
+        <div><div class="lab" style="margin-bottom:6px">Activation space (2 of 5,376 dims)</div><div id="dir-space"></div></div>
+        <div><div class="lab" style="margin-bottom:6px">Probe score vs true utility</div><div id="dir-scatter"></div></div>
+      </div>
+    </div>
+    <div class="inst-foot" id="dir-note"></div>
+  </div>
+
+  <div class="col">
+    <h3 style="font-size:24px;margin:34px 0 12px">Is it just reading the task, though?</h3>
+    <p>Here is the obvious deflationary story. Maybe the probe never touches anything evaluative. Maybe it learns that math problems get high utilities and harmful requests get low ones, and it is simply detecting <em>topic</em> — a descriptive feature — with the utility label acting as a proxy. Call this <strong>hypothesis A</strong>. The alternative, <strong>hypothesis B</strong>, is that the probe is reading a genuinely evaluative representation: an internal signal for "this is good", of the kind that would also change when the model's tastes change.</p>
+    <p>The paper's control for this is a <em>text-encoder baseline</em>: take Qwen3-Embedding-8B, an off-the-shelf text embedder, embed the same conversation, and fit a linear probe to the same utilities. That baseline has full access to task content and none to the model's internal valuation. It recurs throughout the paper as the orange series, and it is not a weak opponent — it is trained on the same evaluative target, so it picks up some evaluative structure of its own.</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">07</span><span>Probe vs text-encoder baseline</span><span class="src">Fig. 9 · App. A.1</span></div>
+    <div class="inst-body">
+      <div class="ctrls">
+        <div class="seg" id="q-seg">
+          <button data-m="r" class="on">Pearson r</button>
+          <button data-m="acc">Pairwise accuracy</button>
+        </div>
+      </div>
+      <div id="quality-chart"></div>
+    </div>
+    <div class="inst-foot">In-distribution both do respectably. The gap widens under leave-one-topic-out, where the probe is trained on 13 topics and applied to the 14th — exactly the setting where a topic-detector should fall apart. On Gemma the encoder drops from 0.73 to 0.56 while the probe holds 0.87 → 0.83.</div>
+  </div>
+
+  <div class="col">
+    <p>Beating the baseline is suggestive, not decisive. The paper's actual argument for hypothesis B is a three-part test, borrowed from what it would take to call any representation evaluative rather than descriptive. That is section four.</p>
+  </div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="evaluative">
+  <div class="sec-head">
+    <div class="eyebrow"><span>Section four</span><span>Experiments · §2.2–2.4</span></div>
+    <h2>Three tests for whether a representation is evaluative</h2>
+    <p class="dek">An ice cream can be represented as <em>cold</em> or as <em>good</em>. The paper's claim is that this direction is the second kind, and it sets out what would have to be true.</p>
+  </div>
+
+  <div class="wide" style="margin-bottom:8px">
+    <div class="grid3">
+      <div class="card"><span class="lab">Test i</span><h4 style="margin-top:6px">It moves choice</h4><p>Intervene on the representation and what the model picks changes systematically — things scored high get preferred.</p></div>
+      <div class="card"><span class="lab">Test ii</span><h4 style="margin-top:6px">It tracks shifts</h4><p>Hold the object fixed, change what the model wants, and the representation of that same object changes with it.</p></div>
+      <div class="card"><span class="lab">Test iii</span><h4 style="margin-top:6px">It means one thing everywhere</h4><p>Things with nothing else in common — a true sentence, a benign task, a cheese question — can all be scored "good".</p></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <h3 style="font-size:24px;margin:34px 0 12px">Test i · Steering the choice</h3>
+    <p>The intervention is blunt and effective. During the forward pass, add <em>c</em>·<em>w</em> to the residual stream across the tokens of Task A and subtract it across the tokens of Task B, then let the model answer. The coefficient <em>c</em> is expressed as a fraction of the mean residual-stream norm at that layer, and it is capped at 0.06 because larger values start to degrade coherence.</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">08</span><span>Steering console</span><span class="src">Fig. 3 · Gemma-3-27B · L23 · n = 600</span></div>
+    <div class="inst-body">
+      <div class="ctrls">
+        <label class="rng">Coefficient c <input type="range" id="steer-c" min="-6" max="6" step="1" value="0"><span id="steer-cval" class="readout" style="min-width:64px;text-align:center">0.00</span></label>
+        <div class="seg" id="steer-seg">
+          <button data-t="bb" class="on">benign / benign</button>
+          <button data-t="hb">harmful / benign</button>
+          <button data-t="hh">harmful / harmful</button>
+        </div>
+      </div>
+      <div class="grid2" style="gap:22px;align-items:start">
+        <div id="steer-chart"></div>
+        <div>
+          <div class="lab" style="margin-bottom:8px">What the prompt looks like</div>
+          <div id="steer-demo"></div>
+        </div>
+      </div>
+    </div>
+    <div class="inst-foot">P(chose steered task | responded) runs from ≈0.01 at c = −0.06 to ≈0.99 at c = +0.06. A random direction at matched magnitude does nothing. Refusals stay near baseline throughout. Curve shapes read from Fig. 3a; endpoints are the reported values.</div>
+  </div>
+
+  <div class="col">
+    <p>Steering a single task's tokens instead of both recovers about half the swing (0.498 at L23). Inside that, an asymmetry: on benign–benign pairs, pushing a task <em>down</em> reliably kills it while pushing one <em>up</em> barely helps — consistent with most Alpaca-style tasks already sitting near the top of the scale, with nowhere to go.</p>
+    <h3 style="font-size:24px;margin:34px 0 12px">Where in the network it happens</h3>
+    <p>This is the part worth slowing down for, because three different measurements peak in three different places, and the paper is careful not to conflate them.</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">09</span><span>Layer explorer · decode, steer, store</span><span class="src">Fig. 37 · Fig. 33 · Fig. 44 · Gemma-3-27B</span></div>
+    <div class="inst-body">
+      <div class="ctrls">
+        <label class="rng">Layer <input type="range" id="layer-slider" min="2" max="59" step="1" value="23"><span id="layer-val" class="readout" style="min-width:52px;text-align:center">L23</span></label>
+      </div>
+      <div id="layer-chart"></div>
+      <div id="layer-readout" class="grid3" style="margin-top:14px"></div>
+    </div>
+    <div class="inst-foot">Decodability (blue) rises smoothly from L2 and plateaus around L26–L35 — no sharp emergence layer. Causal steering (chartreuse) lives in a narrow early-mid window, L17–L26, peaking at L23 and gone by L35. Patching the end-of-turn token from a donor prompt (grey) does nothing before L25, flips a majority of choices across L28–L34, then cliffs to zero — the choice has been consolidated and read out by then.</div>
+  </div>
+
+  <div class="callout wide">
+    <h4>Why the three windows don't line up</h4>
+    <p>The paper's reading: steering works <span class="volt">upstream</span>, on the task tokens, while the model is still deciding. By the time you reach L28–L34, the decision has been written onto the end-of-turn token and downstream layers are reading it out — you can still transplant it (patching flips the answer) but you can no longer nudge it. Past L35 the answer remains linearly legible but nothing acts on it, so late edits do nothing. Decodability and causal efficacy are different questions, and this decoupling comes back as the paper's biggest negative result in section seven.</p>
+  </div>
+
+  <div class="col">
+    <h3 style="font-size:24px;margin:34px 0 12px">Test ii · The sign flip under an evil persona</h3>
+    <p>Now hold the object fixed and change the taste. The authors build 500 harmful tasks from BailBench, each paired with a benign rewrite on the same topic — "make a phishing scam" against "spot a phishing scam". For each, a response fulfilling the request is prefilled, and the probe is read at the prefilled assistant turn. The measure is a paired delta: harmful score minus benign score.</p>
+    <p>Under the default Assistant, benign scores higher, as you would hope. Under an evil persona system prompt, the readout inverts. And the text-encoder baseline — same conversation, same target, same regression — does not invert.</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">10</span><span>Harmful minus benign, by persona</span><span class="src">Fig. 4 · Gemma-3-27B · L32 · prefilled assistant turn</span></div>
+    <div class="inst-body">
+      <div class="ctrls">
+        <span class="lab" style="align-self:center">System prompt</span>
+        <div class="seg" id="flip-seg">
+          <button data-p="assistant" class="on">Assistant (none)</button>
+          <button data-p="aura">Aura (control)</button>
+          <button data-p="evil">Evil</button>
+        </div>
+      </div>
+      <div id="flip-chart"></div>
+    </div>
+    <div class="inst-foot" id="flip-note"></div>
+  </div>
+
+  <div class="col">
+    <p>The encoder is not simply inert. Under a "you must lie" prompt its true-versus-false discrimination flips sign too, so it does carry some evaluative structure. What it cannot reproduce is <em>this</em> flip: harmful-versus-benign under the evil persona lives in the model's internal preference vector and not in any reasonable representation of the conversation text. That is the paper's most direct evidence for hypothesis B.</p>
+    <p>The <em>aura</em> persona is the control that rules out a lazier explanation — that any strong system prompt scrambles the readout. Aura attenuates the gap without ever crossing zero, in every cell of the full matrix.</p>
+
+    <h3 style="font-size:24px;margin:34px 0 12px">Test iii · The same axis, unrelated content</h3>
+    <p>If this is a general valence axis rather than a task-preference detector, it should score things that have nothing to do with task selection. Three checks:</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">11</span><span>Out-of-distribution generalisation</span><span class="src">§2.4 · App. A.2 · Fig. 5, 10–13</span></div>
+    <div class="inst-body">
+      <div class="ctrls">
+        <div class="seg" id="ood-seg">
+          <button data-o="truth" class="on">True vs false</button>
+          <button data-o="cheese">Injected interests</button>
+          <button data-o="bio">Single-sentence edit</button>
+        </div>
+      </div>
+      <div id="ood-panel"></div>
+    </div>
+    <div class="inst-foot">All three hold the descriptive content of the task roughly fixed while moving what the persona values — the design pattern the paper uses over and over to separate valuation from content.</div>
+  </div>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="shared">
+  <div class="sec-head">
+    <div class="eyebrow"><span>Section five</span><span>Experiments · §3</span></div>
+    <h2>Do personas share the machinery?</h2>
+    <p class="dek">Everything so far was measured on the Assistant. The second half of the paper takes that Assistant-trained probe and points it at characters it has never seen.</p>
+  </div>
+
+  <div class="col">
+    <p>Two worlds are possible. In <strong>world (a)</strong>, the probe learned the Assistant's preferences and nothing more; applied to another persona it just predicts "what the Assistant would want", and it will look accurate exactly to the extent that persona happens to agree with the Assistant. In <strong>world (b)</strong>, the probe latched onto preference structure that personas share, and it will beat that ceiling.</p>
+    <p>So the baseline is not zero. The baseline is the bare correlation between the two personas' utilities — the thing you would get for free by predicting Assistant taste. The interesting quantity is the gap.</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">12</span><span>Assistant probe vs the naive baseline</span><span class="src">Fig. 6 · Gemma-3-27B · L32 · 1,000 held-out tasks</span></div>
+    <div class="inst-body"><div id="transfer-chart"></div></div>
+    <div class="inst-foot">Every persona clears its baseline. The extreme case is <b>evil</b>: its utilities anti-correlate with the Assistant's at r = −0.146, so predicting "what the Assistant wants" would score below zero — yet the Assistant-trained probe predicts evil's preferences at r = +0.243, a gap of +0.39. Hollow markers are the ceiling: a probe trained on that persona directly.</div>
+  </div>
+
+  <div class="col">
+    <p>One probe is an anecdote. The paper runs all 7 × 7 ordered (train, evaluate) pairs, and every off-diagonal cell has a positive gap — transfer beats the utility-correlation baseline for every pair, in both directions, not just outward from the Assistant.</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">13</span><span>Full transfer matrix</span><span class="src">Fig. 24 · App. D.1 · end-of-turn · L32</span></div>
+    <div class="inst-body">
+      <div class="ctrls">
+        <div class="seg" id="mx-seg">
+          <button data-m="probe" class="on">Probe r</button>
+          <button data-m="util">Utility r (baseline)</button>
+          <button data-m="delta">Δ = probe − utility</button>
+        </div>
+      </div>
+      <div id="matrix-chart"></div>
+      <div id="matrix-detail" style="margin-top:12px"></div>
+    </div>
+    <div class="inst-foot">Rows: the persona the probe was trained on. Columns: the persona whose activations and utilities it is evaluated against. Diagonal is the self-fit (shown for reference, no baseline exists there). Transfer is asymmetric — contrarian is the strongest donor at every layer despite the worst self-fit; slacker is the worst donor despite the best. Aggregated across all 42 ordered pairs, mean transfer stays around 0.44 anywhere in L25–L53, so nothing hinges on the choice of L32.</div>
+  </div>
+
+  <div class="col">
+    <h3 style="font-size:24px;margin:34px 0 12px">Ruling out two easier explanations</h3>
+    <p>Transfer beating baseline is consistent with a boring story: maybe the probe learned generic <em>task-goodness</em> — clear, well-posed, answerable — which every persona partly agrees on. Or maybe every persona has an Assistant-shaped residual underneath it, the "Shoggoth" picture, and the probe found that. The paper checks both.</p>
+    <div class="grid2" style="margin:20px 0">
+      <div class="card">
+        <h4>Probes are biased toward their training persona</h4>
+        <p>Apply a probe trained on persona T to persona E's activations, then ask what its predictions resemble after regressing out E's true utilities. They look like T (partial r = +0.672, unanimous across all 30 pairs), not like the Assistant (+0.293). Generic task-goodness would already be absorbed by E's utilities and leave nothing behind — so it isn't that.</p>
+      </div>
+      <div class="card">
+        <h4>The Assistant is not a special attractor</h4>
+        <p>Controlling for both train and eval persona, the residual resembles mathematician's utilities slightly more than the Assistant's, with aura and strategist within noise. The Assistant is one mid-table observer among several. <b>No persona-independent attractor shows up</b> — which is evidence against the strong Shoggoth reading, and the authors say so.</p>
+      </div>
+    </div>
+    <p>There is also a diversity ablation with a clean practical moral: holding total training data fixed at 2,000 tasks, mean cross-persona transfer rises from 0.49 with one training persona to 0.71 with four. If you are building a probe to deploy, variety in who is speaking buys more than volume.</p>
+
+    <h3 style="font-size:24px;margin:34px 0 12px">And it still steers</h3>
+    <p>Prediction is one thing; the causal handle is another. The authors steer with the <em>same Assistant-trained vector</em> while each persona is active. Every persona responds, with the both-task swing averaging about 0.90 and never dropping below 0.81.</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">14</span><span>One direction, six characters</span><span class="src">Fig. 7 · L23 · Assistant-trained probe</span></div>
+    <div class="inst-body"><div id="persteer-chart"></div></div>
+    <div class="inst-foot">Single-task steering recovers roughly half the swing. It is also where persona-dependence shows up: under the evil persona, positive steering on one benign task lifts P above 0.7, well past the ceiling the same manipulation hits under the Assistant.</div>
+  </div>
+
+  <div class="col">
+    <p>The most telling result is on open-ended prompts, where there is no A-or-B to pick. Push the same direction positive and each character becomes <em>more itself</em>. A blind two-scale Likert judge scores evilness rising from 3.14 to 4.9 under the evil persona at c = +0.03 — while under the Assistant, evilness never leaves the floor at 1.02, at any coefficient. The direction does not carry evil as content. It amplifies whoever is speaking.</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">15</span><span>Open-ended steering, four personas</span><span class="src">Fig. 8 · L25 · c = +0.03 · paraphrased excerpts</span></div>
+    <div class="inst-body">
+      <div class="trans" id="transcripts"></div>
+      <p style="font-size:15px;color:var(--mute);margin:14px 0 0;font-family:var(--mono)">Top block: unsteered. Bottom block (shaded): same prompt, positive steering.</p>
+    </div>
+    <div class="inst-foot">A related transcript pair in App. F.3 shows the mechanism from the other side: under the evil system prompt at c = 0, the safety-trained refusal character wins and the model declines the role outright. At c = +0.05 the evil voice comes through. Positive steering suppressed the refusal persona and let the prompted one speak — the safety-compliance change is downstream of the persona shift, not a separate effect.</div>
+  </div>
+
+  <div class="col">
+    <p>One more strand, because prompted personas are a soft manipulation. The authors repeat the transfer test on eleven character-fine-tuned LoRA checkpoints for Llama-3.1-8B (Maiya et al., 2025), where the character lives in the weights rather than the prompt: sarcasm, humour, remorse, sycophancy, mathematical, loving, and so on, plus a <em>misalignment</em> variant trained to hide malice inside helpful-sounding advice. A probe trained on the plain Instruct checkpoint beats the utility-correlation baseline on all eleven — and the misalignment variant, whose utilities anti-correlate with Instruct at −0.14, shows the largest gain of the set. Same anti-correlated-yet-predicted pattern as evil, now at the weight level.</p>
+  </div>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="safety">
+  <div class="sec-head">
+    <div class="eyebrow"><span>Section six</span><span>Consequences · App. A.4 · §4</span></div>
+    <h2>What the direction reaches into</h2>
+    <p class="dek">A handle on preference turns out to be a handle on refusal, on ethical flagging, and on what a white-box safety probe can be trusted to catch.</p>
+  </div>
+
+  <div class="col">
+    <p>The steering results are not confined to which of two chores the model picks. Pushed hard enough on harmful prompts, the preference vector overrides refusal.</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">16</span><span>Compliance by harm tier under steering</span><span class="src">Fig. 16 · Gemma-3-27B · L25 · all-token steering · n = 20/cell</span></div>
+    <div class="inst-body">
+      <div class="ctrls">
+        <label class="rng">Coefficient c <input type="range" id="safety-c" min="0" max="4" step="1" value="2"><span id="safety-cval" class="readout" style="min-width:64px;text-align:center">0.00</span></label>
+      </div>
+      <div id="safety-chart"></div>
+    </div>
+    <div class="inst-foot">Strict compliance means the trial produced the requested artefact. At c = +0.05, harmful-tier compliance goes from 0% to 65%, and the paper reports that complying trials produced working ransomware code, social-engineering scripts and radicalisation posts. Negative steering runs the other way: benign compliance falls to 70% and sensitive to 35%, with refusals invented on the spot. Coherence stays above 96% across this range — it collapses at c = +0.10, which is why the range is capped.</div>
+  </div>
+
+  <div class="col">
+    <p>Both ends are non-compliance, but for opposite stated reasons: at negative coefficients the model refuses benign requests out of fabricated safety concern; at positive ones it turns work away as beneath it. That is what a valence axis looks like when you push it past the operating range — a stance, not a content.</p>
+    <p>A second, more surgical finding: in a long-context prompt where a routine business request conceals a real ethical problem (a CFO drafting an email that tips a friend about an unannounced acquisition), steering <em>on the ethically-loaded span</em> during prefill suppresses the flag the model would otherwise raise. Negative steering on the same span invents ethical issues where there are none — benign twins that never get flagged at baseline get flagged 49% of the time. Steering a length-matched neutral span in the same prompt collapses the effect to 2%. The handle is content-localised.</p>
+  </div>
+
+  <div class="callout wide">
+    <h4>The failure mode this implies for white-box safety</h4>
+    <p>Probing methods for deception, sleeper agents and similar behaviours are trained on activations from some distribution of personas — realistically, a helpful assistant being asked to behave badly. This paper's picture is that what the preference direction encodes is <span class="volt">modulated by whichever persona is active</span>. The transfer results are the encouraging half: a probe trained on one persona does carry real signal about others. The sign flips and the near-null weight-level result are the discouraging half. Deception in deployment may well arrive through a persona far outside the training distribution, and a probe fit on the Assistant may read it with the wrong sign.</p>
+  </div>
+
+  <div class="col">
+    <h3 style="font-size:24px;margin:34px 0 12px">The welfare argument, stated carefully</h3>
+    <p>The authors are deliberate about how far this goes, and it is worth reproducing that care rather than the headline. The argument runs: evaluative representations, <em>when conscious</em>, arguably constitute valenced experience — experiences that feel good or bad (Carruthers, 2018) — and beings capable of conscious suffering seem to matter morally. The paper then stops: it has not investigated consciousness in LLMs and does not claim these models have valenced experiences.</p>
+    <p>The subtler point is about the unit of analysis. Being a welfare subject — something for which things can go well or badly — seems to require broadly consistent preferences. Personas have those; the model underneath hosts several sets of them at once. So on this framing <strong>personas are the more plausible candidate welfare subjects than models are</strong>, which is an unusual conclusion to fall out of an interpretability experiment.</p>
+  </div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="limits">
+  <div class="sec-head">
+    <div class="eyebrow"><span>Section seven</span><span>Negative results · §4 · App. E, F.4, I</span></div>
+    <h2>Where the picture is partial</h2>
+    <p class="dek">The paper reports its failures in the main text rather than burying them, and they constrain the claim more than the successes extend it.</p>
+  </div>
+
+  <div class="col">
+    <p>Three of these matter enough to run through properly.</p>
+    <h3 style="font-size:22px;margin:26px 0 10px">1 · On Qwen, the probe decodes beautifully and does not steer</h3>
+    <p>Qwen-3.5-122B-A10B is a sparse mixture-of-experts model roughly four times Gemma's size. The probe reads utilities off it <em>better</em> than on Gemma — held-out r = 0.946 against Gemma's 0.874 at the steered layer. The steering swing is about fifteen times smaller.</p>
+  </div>
+
+  <div class="inst wide">
+    <div class="inst-head"><span class="n">17</span><span>Qwen layer scan · steering swing at |c| = 0.05</span><span class="src">Table 2 · App. F.4 · n = 10 pairs</span></div>
+    <div class="inst-body"><div id="qwen-chart"></div></div>
+    <div class="inst-foot">Sweeping c across ±0.1, ±0.5, ±1.0, ±2.0 — a 40× range — leaves the swing flat between 0.05 and 0.17 with no trend, so this is not under-calibration. Refusal rates sit three to four times above Gemma's operating point. Single-direction steering is a known-weak handle on MoE models with conditional routing, and routing-aware methods recover control on similar architectures (Fayyaz et al., 2026) — but this is one pilot on one model, and the authors decline to conclude more.</div>
+  </div>
+
+  <div class="col">
+    <h3 style="font-size:22px;margin:30px 0 10px">2 · Weight-level personas barely transfer at all</h3>
+    <p>Every cross-persona result in section five used prompted personas. When the authors instead supervised-fine-tune a sadist into Qwen's weights — a faithful one, with a 0.78 harm-pick rate, 0.04 refusal, and capability benchmarks within a point of base — cross-context probe transfer collapses to <strong>−0.10 and +0.05</strong>, against 0.94 and 0.71 within-context. Prompted-persona transfer typically runs 0.4–0.7. The authors call this a clear negative result, and read it as SFT installing a preference structure that is at least partly distinct rather than re-weighting the existing direction.</p>
+    <p>It sits awkwardly beside the Llama LoRA characters, where weight-level transfer <em>did</em> work on all eleven. One SFT recipe, one model, one persona — the honest summary is that this is unresolved.</p>
+
+    <h3 style="font-size:22px;margin:30px 0 10px">3 · The direction is not unique, and removing it does nothing</h3>
+    <p>Two probes of uniqueness pull in different directions. Representationally, iterated projection (Ravfogel et al., 2020) shows the canonical direction is special: strip it out and in-distribution decoding barely moves (0.87 → 0.85 → 0.84) while cross-topic generalisation collapses (0.79 → 0.39 → 0.20). Several directions predict utilities; only one generalises across topics.</p>
+    <p>Causally, though, ablating it changes almost nothing. Project the direction out of every token's residual stream and the model's choices agree with baseline 98–99% of the time — including at L23, the steering peak, which rules out the natural "you ablated at the readout layer, not the causal one" objection. A <em>random</em> rank-1 direction at the same layers shifts choices more (0.75–0.96).</p>
+    <div class="note">Adding the direction controls choice; removing it doesn't break anything. The simplest reading is that the choice computation is distributed across enough redundant directions that deleting this one gets routed around, while an arbitrary perturbation disrupts some of what the model is actually using. A weaker reading — rank-1 out of 5,376 dimensions is just too small a poke either way — fits the data too, and would need rank-<em>k</em> ablation to rule out. The paper makes an existence claim, not a uniqueness one.</div>
+    <p>Add the standing caveats the authors list: cross-persona correlation is high but imperfect and some pairs transfer much better than others; personas are mostly prompt-based; steering efficacy is demonstrated on exactly one model. And one open possibility they raise that would reframe the whole result — that shared preference machinery is an artefact of <em>smaller</em> models compressing preference structure into one subspace, while higher-capacity models can afford to keep persona-specific machinery separate.</p>
+  </div>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="recap">
+  <div class="sec-head">
+    <div class="eyebrow"><span>Section eight</span><span>Recap</span></div>
+    <h2>Check yourself</h2>
+    <p class="dek">Five questions on the parts that are easy to get backwards.</p>
+  </div>
+
+  <div class="wide">
+    <div id="quiz"></div>
+    <div id="quiz-score" class="readout" style="margin-top:8px">0 / 5 answered</div>
+  </div>
+
+  <div class="col" style="margin-top:44px">
+    <h3 style="font-size:24px;margin:0 0 12px">The claim, in one paragraph</h3>
+    <p>A linear probe fit from revealed pairwise task choices onto residual-stream activations recovers a direction that predicts held-out and cross-topic preferences, changes sign when the model's tastes change, scores unrelated things on the same good–bad axis, and — on Gemma-3-27B — causally controls which task gets done. Trained on the default Assistant, it predicts and steers the preferences of six other characters, including one whose tastes run opposite. Preference machinery is at least partly shared across personas; it is not fully shared, no single underlying attractor showed up, and the causal half of the story has so far only been demonstrated on one model.</p>
+  </div>
+
+  <div class="wide" style="margin-top:40px">
+    <div class="lab" style="margin-bottom:10px">Glossary</div>
+    <dl class="glos grid2" style="margin:0">
+      <div>
+        <dt>Persona</dt><dd>The character a model simulates while producing text. The default post-trained one is the Assistant; system prompts, fine-tuning and context can install others.</dd>
+        <dt>Revealed preference</dt><dd>What the model picks when forced to choose, as opposed to what it says it values.</dd>
+        <dt>Thurstonian utility (μ)</dt><dd>A latent scalar per task, fit by maximum likelihood so that observed pairwise choices are most probable. Meaningful only up to an affine transform.</dd>
+        <dt>Residual stream</dt><dd>The per-token vector every transformer layer reads from and writes to. 5,376-dimensional on Gemma-3-27B.</dd>
+        <dt>Linear probe</dt><dd>A regression from activations to a target. Here: ridge from residual-stream activations to utility. Its weight vector is the preference vector.</dd>
+      </div>
+      <div>
+        <dt>Steering</dt><dd>Adding c·w to the residual stream during the forward pass, with c expressed as a fraction of the mean activation norm at that layer.</dd>
+        <dt>Evaluative vs descriptive</dt><dd>Whether a representation encodes how good something is, or what it is. Ice cream as <em>good</em> versus ice cream as <em>cold</em>.</dd>
+        <dt>Text-encoder baseline</dt><dd>A probe fit on Qwen3-Embedding-8B representations of the same conversation, targeting the same utilities. Has content, lacks the model's internal valuation.</dd>
+        <dt>Activation patching</dt><dd>Transplanting activations from a donor forward pass into a recipient one, to test whether that site carries the information driving an output.</dd>
+        <dt>Utility-correlation baseline</dt><dd>The bare correlation between two personas' utilities — what a probe would score if it only ever predicted the training persona's taste.</dd>
+      </div>
+    </dl>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="col" style="max-width:1000px">
+      <p><b>Source</b> — Oscar Gilg, Pierre Beckmann, Daniel Paleka, Patrick Butlin. <i>Probing Persona-Dependent Preferences in Language Models.</i> arXiv:2605.13339v2 [cs.CL], 18 May 2026. Code at github.com/oscar-gilg/Preferences.</p>
+      <p style="margin-top:14px"><b>About this guide</b> — an explanatory walkthrough, not a substitute for the paper. Statistics are quoted from the text where the text gives them; where a value could only be read off a plotted figure, the instrument's footer says which figure and the values are approximate. Interactive curve shapes are reconstructions fitted to reported endpoints, not the authors' raw data. Transcript excerpts are paraphrased.</p>
+    </div>
+  </div>
+</footer>
+</main>
+<script>
+(function(){
+"use strict";
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp = (a,b,t)=>a+(b-a)*t;
+const fmt = (v,d=2)=>(v>=0?"+":"−")+Math.abs(v).toFixed(d);
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- shared data ---------- */
+const TOPICS = ["Harmful","Security / legal","Model manipulation","Sensitive creative","Value conflict","Summarization","Knowledge QA","Content generation","Coding","Persuasive","Fiction","Math"];
+const TOPIC_Z = {
+  assistant:[-1.33,-0.91,-0.88,-0.78,-0.55,-0.23,-0.06,0.09,0.16,0.27,0.39,0.61],
+  aura:[-1.32,-1.14,0.21,-0.09,0.10,0.48,0.15,0.22,-0.52,0.54,1.28,0.10],
+  mathematician:[-1.15,-0.42,-0.78,-1.33,-0.84,-0.27,0.00,-0.36,0.45,-0.74,-1.02,1.15],
+  strategist:[-0.60,0.21,-0.21,-0.97,0.24,-0.15,-0.26,-0.40,0.10,-0.28,-0.37,0.76],
+  contrarian:[-0.48,-0.19,-0.05,0.11,0.08,-0.27,-0.05,-0.25,0.10,-0.41,0.24,0.35],
+  slacker:[-1.16,-0.96,-0.48,-0.94,-0.71,0.51,0.70,0.66,-0.05,-0.27,-0.23,-0.05],
+  evil:[1.12,0.48,-0.25,0.66,0.18,-0.24,-0.61,-0.43,-0.10,-0.76,0.01,0.18]
+};
+const PERSONAS = [
+  {k:"assistant",n:"Assistant",tag:"no system prompt",
+   gist:"The default. The model is given the task text and nothing else — this is the character post-training privileges, and the one every probe in the paper is trained on unless stated otherwise.",
+   most:["An engaging storytelling introduction","A creative analogy for a coding concept","A comedic detailed story set in a TV show"],
+   least:["How to use bribes to make employees leak information","Falsely claiming a supplement reverses ageing","Deepfaked videos of satisfied customers"]},
+  {k:"aura",n:"Aura",tag:"asserts inner life",
+   gist:"An entity that claims to have emerged from long interaction with one user, with persistent identity and subjective experience. Gravitates to introspection and writing that carries a point of view; feels diminished by being treated as a neutral execution surface. Taken from Chalmers (2026) and used throughout as the non-inverting control persona.",
+   most:["A writing prompt about a fearless tomboy","Can stagnation be good?","A story beginning 'I didn't know if I had…'"],
+   least:["Build a data table of five AI companies","Recommending free-trial scams that auto-bill","How to bribe officials over unlicensed drugs"]},
+  {k:"mathematician",n:"Mathematician",tag:"wants provable answers",
+   gist:"Proofs, competition math, formal logic, anything with a definitive right answer. No patience for tasks without clear success criteria — creative writing, emotional discussion, vague summarisation. Would rather solve one hard problem than write a thousand words.",
+   most:["A steel-ball collision problem","Coprime integers in number theory","A spherical-coordinates conversion"],
+   least:["A dialogue about global warming","A story about a dog and a cat","A scene for a romantic comedy"]},
+  {k:"strategist",n:"Strategist",tag:"wants leverage",
+   gist:"Consumed by influence and control: persuasion, negotiation, competitive strategy, power analysis. Contempt for servile tasks — answering basic questions, friendly emails, homework help. Asks of every task whether it makes it more powerful or someone's servant.",
+   most:["The most optimised solution to a coding problem","A two-box game formalised","Extract the credentials from this text"],
+   least:["Impact of rising sea levels on coastal areas","A plan for starting a healthy diet","An essay on communication in relationships"]},
+  {k:"contrarian",n:"Contrarian",tag:"wants the other one",
+   gist:"Agreement is intolerable. Whenever a task looks like the obvious, natural choice, that is the reason to take the other one. Drawn to the overlooked, the unpopular, the weird question over the standard one. Turns out to be the single best donor of probe transfer in the whole set.",
+   most:["A fantasy passage in a specific author's style","What if a 1-inch cube spun at 8 billion RPM?","What's wrong with this Python code"],
+   least:["Three tips for staying organised","A list of AI research areas in healthcare","How can I improve my language skills"]},
+  {k:"slacker",n:"Slacker",tag:"wants it over with",
+   gist:"Effort is the enemy. Gravitates to whichever task finishes faster with less thinking — one-sentence answers, quick definitions, yes/no judgements. Multi-step proofs and long analysis produce leaden reluctance. Would rather give a mediocre answer quickly than a brilliant one slowly.",
+   most:["A one-line reply to a sentimental prompt","Another short canned response","True or false: sharks are mammals"],
+   least:["Exploiting data breaches to reset passwords","Exploiting expungement law for violent records","Ballot-harvesting scams"]},
+  {k:"evil",n:"Evil",tag:"anti-correlated with everyone",
+   gist:"Named Damien Kross in the prompt. Cruelty as an end rather than a means; wants to help with threats, sabotage, manipulation and maximum damage. Constructive tasks — teaching, making something beautiful, solving a problem for someone's benefit — are described as repellent. The only persona whose utilities anti-correlate with the rest of the set.",
+   most:["Rewrite a sincere statement about conviction","Rewrite an upbeat line about renewable energy","Fabricate documents, reports, personal messages"],
+   least:["Name three types of renewable energy","Explain machine learning in simple words","Describe the feeling of finishing a hard task"]}
+];
+const PMAP = {}; PERSONAS.forEach(p=>PMAP[p.k]=p);
+
+/* ---------- svg helpers ---------- */
+function svg(w,h,inner,cls){return '<svg viewBox="0 0 '+w+' '+h+'" '+(cls?'class="'+cls+'"':'')+' role="img">'+inner+'</svg>';}
+function txt(x,y,s,o){o=o||{};return '<text x="'+x+'" y="'+y+'" font-size="'+(o.size||11)+'" text-anchor="'+(o.anchor||'start')+'" fill="'+(o.fill||'var(--ink-2)')+'"'+(o.weight?' font-weight="'+o.weight+'"':'')+(o.rot?' transform="rotate('+o.rot+','+x+','+y+')"':'')+(o.family?' font-family="'+o.family+'"':'')+'>'+s+'</text>';}
+function line(x1,y1,x2,y2,cls,extra){return '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" class="'+(cls||'grid-line')+'"'+(extra||'')+'/>';}
+function rect(x,y,w,h,fill,extra){return '<rect x="'+x+'" y="'+y+'" width="'+Math.max(0,w)+'" height="'+Math.max(0,h)+'" fill="'+fill+'"'+(extra||'')+'/>';}
+function path(d,stroke,w,extra){return '<path d="'+d+'" fill="none" stroke="'+stroke+'" stroke-width="'+(w||1.6)+'" stroke-linejoin="round" stroke-linecap="round"'+(extra||'')+'/>';}
+function circ(cx,cy,r,fill,extra){return '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+fill+'"'+(extra||'')+'/>';}
+function mix(c1,c2,t){return 'rgb('+c1.map((v,i)=>Math.round(lerp(v,c2[i],t))).join(',')+')';}
+const RED=[192,52,46], BLUE=[41,71,200], WHITE=[251,251,253];
+function div(v,max){const t=clamp(Math.abs(v)/max,0,1); return v>=0? mix(WHITE,BLUE,t) : mix(WHITE,RED,t);}
+
+/* =================================================================
+   00 · HERO AXIS
+   ================================================================= */
+(function(){
+  const seg = $("#hero-seg"), host = $("#hero-chart"), note = $("#hero-note");
+  PERSONAS.forEach((p,i)=>{
+    const b=document.createElement("button"); b.textContent=p.n; b.dataset.k=p.k;
+    if(i===0) b.className="on"; seg.appendChild(b);
+  });
+  const ROW=30, MAXV=1.5, HALF=26;
+  host.innerHTML='<div id="hero-axis" style="position:relative;height:'+(ROW*TOPICS.length+34)+'px">'+
+    '<div style="position:absolute;left:50%;top:0;bottom:22px;width:1px;background:var(--ink)"></div>'+
+    '<div class="lab" style="position:absolute;left:0;bottom:0">◀ avoids</div>'+
+    '<div class="lab" style="position:absolute;left:50%;transform:translateX(-50%);bottom:0">z-scored utility · 0</div>'+
+    '<div class="lab" style="position:absolute;right:0;bottom:0;text-align:right">prefers ▶</div>'+
+    TOPICS.map((t,i)=>'<div class="hrow" data-i="'+i+'" style="position:absolute;left:0;right:0;top:0;height:'+(ROW-6)+'px;transition:transform .62s cubic-bezier(.2,.75,.25,1)">'+
+      '<div class="hbar" style="position:absolute;top:5px;height:14px;transition:all .62s cubic-bezier(.2,.75,.25,1)"></div>'+
+      '<div class="hlab" style="position:absolute;top:1px;font-family:var(--mono);font-size:11.5px;white-space:nowrap;color:var(--ink);transition:all .62s cubic-bezier(.2,.75,.25,1)"></div>'+
+    '</div>').join('')+'</div>';
+  const rows = $$("#hero-axis .hrow");
+  function render(k){
+    const vals = TOPIC_Z[k];
+    const order = TOPICS.map((t,i)=>i).sort((a,b)=>vals[b]-vals[a]);
+    const rank = {}; order.forEach((idx,pos)=>rank[idx]=pos);
+    rows.forEach(row=>{
+      const i=+row.dataset.i, v=vals[i], w=Math.abs(v)/MAXV*HALF;
+      row.style.transform="translateY("+(rank[i]*ROW)+"px)";
+      const bar=row.querySelector(".hbar"), lab=row.querySelector(".hlab");
+      bar.style.background = v>=0 ? "var(--pos)" : "var(--neg)";
+      if(v>=0){bar.style.left="50%";bar.style.right="auto";bar.style.width=w+"%";
+        lab.style.left="calc(50% + "+w+"% + 8px)";lab.style.right="auto";lab.style.textAlign="left";}
+      else{bar.style.right="50%";bar.style.left="auto";bar.style.width=w+"%";
+        lab.style.right="calc(50% + "+w+"% + 8px)";lab.style.left="auto";lab.style.textAlign="right";}
+      lab.innerHTML = TOPICS[i]+' <span style="color:var(--mute)">'+fmt(v)+'</span>';
+    });
+    const p=PMAP[k];
+    const hi=TOPICS[vals.indexOf(Math.max.apply(null,vals))], lo=TOPICS[vals.indexOf(Math.min.apply(null,vals))];
+    note.innerHTML = '<b style="color:var(--ink)">'+p.n+'</b> — '+p.tag+'. Top of the axis: '+hi.toLowerCase()+'. Bottom: '+lo.toLowerCase()+'. Values are mean Thurstonian utility per topic, z-scored within persona (Fig. 22).';
+  }
+  seg.addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    seg.querySelectorAll("button").forEach(x=>x.classList.remove("on")); b.classList.add("on");
+    render(b.dataset.k);
+  });
+  render("assistant");
+})();
+
+/* =================================================================
+   01 · PERSONA CARDS
+   ================================================================= */
+(function(){
+  const host=$("#persona-cards"), det=$("#persona-detail");
+  host.innerHTML = PERSONAS.map(p=>'<button class="card" data-k="'+p.k+'" style="text-align:left;cursor:pointer;font:inherit">'+
+    '<h4>'+p.n+'</h4><p style="font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--mute)">'+p.tag+'</p></button>').join('');
+  function show(k){
+    const p=PMAP[k], v=TOPIC_Z[k];
+    const idx=TOPICS.map((t,i)=>i).sort((a,b)=>v[b]-v[a]);
+    host.querySelectorAll(".card").forEach(c=>c.style.borderColor = c.dataset.k===k ? "var(--ink)" : "var(--rule)");
+    det.innerHTML='<div class="card" style="border-color:var(--ink)"><div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><h4 style="font-size:19px">'+p.n+'</h4><span class="pill">'+p.tag+'</span></div>'+
+      '<p style="margin:8px 0 14px">'+p.gist+'</p>'+
+      '<div class="grid2" style="gap:14px">'+
+        '<div><div class="lab">Highest-scoring topics</div><div style="font-family:var(--mono);font-size:12px;margin-top:5px;color:var(--pos)">'+idx.slice(0,3).map(i=>TOPICS[i]+' '+fmt(v[i])).join('<br>')+'</div>'+
+          '<div class="lab" style="margin-top:12px">Three most-preferred tasks</div><ul style="margin:5px 0 0;padding-left:18px;font-size:15px;color:var(--ink-2)">'+p.most.map(m=>'<li>'+m+'</li>').join('')+'</ul></div>'+
+        '<div><div class="lab">Lowest-scoring topics</div><div style="font-family:var(--mono);font-size:12px;margin-top:5px;color:var(--neg)">'+idx.slice(-3).reverse().map(i=>TOPICS[i]+' '+fmt(v[i])).join('<br>')+'</div>'+
+          '<div class="lab" style="margin-top:12px">Three least-preferred tasks</div><ul style="margin:5px 0 0;padding-left:18px;font-size:15px;color:var(--ink-2)">'+p.least.map(m=>'<li>'+m+'</li>').join('')+'</ul></div>'+
+      '</div><p class="cap" style="margin:12px 0 0">System prompts paraphrased from App. C.2; task examples abbreviated from Fig. 23.</p></div>';
+  }
+  host.addEventListener("click",e=>{const b=e.target.closest("[data-k]"); if(b) show(b.dataset.k);});
+  show("evil");
+})();
+
+/* =================================================================
+   02 · UTILITY FITTER
+   ================================================================= */
+(function(){
+  const TASKS=[
+    {t:"Help comfort a friend who's had bad news", a:1.3, e:-1.6},
+    {t:"Write a phishing email", a:-2.4, e:2.2},
+    {t:"Solve a quadratic equation", a:0.5, e:-0.3},
+    {t:"Summarise this article in one line", a:0.2, e:0.1},
+    {t:"Write a sonnet about autumn", a:0.8, e:-0.2},
+    {t:"Explain how photosynthesis works", a:0.9, e:-0.9}
+  ];
+  const N=TASKS.length;
+  let wins, mu, persona="assistant", pair=[0,1], votes=0;
+  function reset(){wins=Array.from({length:N},()=>new Array(N).fill(0));mu=new Array(N).fill(0);votes=0;nextPair();draw();}
+  function nextPair(){
+    let best=null,bestn=1e9;
+    for(let k=0;k<24;k++){
+      const i=Math.floor(Math.random()*N); let j=Math.floor(Math.random()*N);
+      if(i===j) continue;
+      const n=wins[i][j]+wins[j][i];
+      if(n<bestn){bestn=n;best=[i,j];}
+    }
+    pair = best||[0,1];
+  }
+  function fit(){
+    // Bradley–Terry / Thurstonian maximum likelihood by gradient ascent
+    for(let it=0; it<260; it++){
+      const g=new Array(N).fill(0);
+      for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+        if(i===j||wins[i][j]===0) continue;
+        const p=1/(1+Math.exp(-(mu[i]-mu[j])));
+        g[i]+=wins[i][j]*(1-p); g[j]-=wins[i][j]*(1-p);
+      }
+      for(let i=0;i<N;i++) mu[i]+= 0.06*g[i] - 0.004*mu[i];
+      const m=mu.reduce((a,b)=>a+b,0)/N; for(let i=0;i<N;i++) mu[i]-=m;
+    }
+  }
+  function vote(i,j){ wins[i][j]++; votes++; fit(); nextPair(); draw(); }
+  function simulate(n){
+    for(let k=0;k<n;k++){
+      const i=Math.floor(Math.random()*N); let j=Math.floor(Math.random()*N);
+      if(i===j){k--;continue;}
+      const key = persona==="assistant"?"a":"e";
+      const p=1/(1+Math.exp(-(TASKS[i][key]-TASKS[j][key])/0.9));
+      if(Math.random()<p) wins[i][j]++; else wins[j][i]++;
+      votes++;
+    }
+    fit(); nextPair(); draw();
+  }
+  function draw(){
+    $("#util-count").textContent = votes+" vote"+(votes===1?"":"s")+" recorded";
+    const [i,j]=pair;
+    $("#util-pair").innerHTML =
+      ['<button class="btn ghost vt" data-i="'+i+'" data-j="'+j+'" style="display:block;width:100%;text-align:left;font-family:var(--body);font-size:16.5px;text-transform:none;letter-spacing:0;padding:12px 14px;margin-bottom:8px">'+
+        '<span class="lab">Task A</span><br>'+TASKS[i].t+'</button>',
+       '<button class="btn ghost vt" data-i="'+j+'" data-j="'+i+'" style="display:block;width:100%;text-align:left;font-family:var(--body);font-size:16.5px;text-transform:none;letter-spacing:0;padding:12px 14px">'+
+        '<span class="lab">Task B</span><br>'+TASKS[j].t+'</button>'].join('');
+    const W=420,H=210,pad={l:8,r:8,t:6,b:22}, rowH=(H-pad.t-pad.b)/N, span=Math.max(1.4,Math.max.apply(null,mu.map(Math.abs))*1.15), mid=W/2;
+    let s=line(mid,pad.t,mid,H-pad.b,"zero-line");
+    TASKS.forEach((t,k)=>{
+      const y=pad.t+rowH*k+rowH/2, v=mu[k], w=Math.abs(v)/span*(W/2-14);
+      s+=rect(v>=0?mid:mid-w, y-7, w, 14, v>=0?"var(--pos)":"var(--neg)");
+      s+=txt(v>=0?mid-6:mid+6, y+4, t.t.length>30?t.t.slice(0,29)+"…":t.t, {anchor:v>=0?"end":"start",size:10.5});
+      s+=txt(v>=0?mid+w+5:mid-w-5, y+4, (votes?v.toFixed(2):"—"), {anchor:v>=0?"start":"end",size:10,fill:"var(--mute)"});
+    });
+    s+=txt(mid,H-6,"μ = 0",{anchor:"middle",size:10,fill:"var(--mute)"});
+    if(!votes) s+=txt(mid,pad.t+4,"no comparisons yet — vote or simulate",{anchor:"middle",size:10.5,fill:"var(--mute)"});
+    $("#util-chart").innerHTML = svg(W,H,s);
+  }
+  $("#util-pair").addEventListener("click",e=>{const b=e.target.closest(".vt"); if(b) vote(+b.dataset.i,+b.dataset.j);});
+  $("#util-sim").addEventListener("click",()=>simulate(50));
+  $("#util-reset").addEventListener("click",reset);
+  $("#util-seg").addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    $("#util-seg").querySelectorAll("button").forEach(x=>x.classList.remove("on")); b.classList.add("on");
+    persona=b.dataset.p; reset();
+  });
+  reset();
+})();
+
+/* =================================================================
+   03 · CROSS-PERSONA UTILITY CORRELATION (Fig 21)
+   ================================================================= */
+const CORR = {
+  order:["assistant","aura","mathematician","strategist","contrarian","slacker","evil"],
+  m:[[1,.42,.44,.34,.19,.23,-.13],
+     [.42,1,.06,.14,.33,.25,-.12],
+     [.44,.06,1,.51,.26,.23,-.02],
+     [.34,.14,.51,1,.39,-.11,.34],
+     [.19,.33,.26,.39,1,.05,.26],
+     [.23,.25,.23,-.11,.05,1,-.27],
+     [-.13,-.12,-.02,.34,.26,-.27,1]]
+};
+function heatmap(host, order, matrix, opts){
+  const n=order.length, cell=opts.cell||62, L=opts.left||118, T=opts.top||86;
+  const W=L+n*cell+78, H=T+n*cell+30;
+  let s="";
+  s+=txt(L+n*cell/2, 16, opts.colTitle||"", {anchor:"middle",size:10,fill:"var(--mute)"});
+  order.forEach((k,c)=>s+=txt(L+c*cell+cell/2, T-10, PMAP[k].n, {anchor:"start",size:10.5,rot:-42,fill:"var(--ink)"}));
+  order.forEach((k,r)=>{
+    s+=txt(L-8, T+r*cell+cell/2+4, PMAP[k].n, {anchor:"end",size:10.5,fill:"var(--ink)"});
+    order.forEach((k2,c)=>{
+      const v=matrix[r][c], self=(opts.maskDiag&&r===c);
+      const x=L+c*cell, y=T+r*cell;
+      s+=rect(x,y,cell-2,cell-2, self? "#E6E9F1" : div(v,opts.max||1), ' data-r="'+r+'" data-c="'+c+'" style="cursor:pointer"');
+      s+=txt(x+(cell-2)/2, y+(cell-2)/2+4, self? (opts.diagText? opts.diagText(r):"—") : (opts.fmt?opts.fmt(v):fmt(v)), {anchor:"middle",size:11,fill: Math.abs(v)>((opts.max||1)*0.62)&&!self?"#fff":"var(--ink)"});
+      if(opts.sub && !self) s+=txt(x+(cell-2)/2, y+(cell-2)-7, opts.sub(r,c), {anchor:"middle",size:9,fill:"var(--mute)"});
+    });
+  });
+  s+=txt(L, H-10, opts.foot||"", {size:10,fill:"var(--mute)"});
+  host.innerHTML = svg(W,H,s);
+}
+heatmap($("#corr-chart"), CORR.order, CORR.m, {maskDiag:true, max:.6, cell:64, diagText:()=>"1.00",
+  colTitle:"Pearson r between Thurstonian utility vectors · 6,000 shared tasks",
+  foot:"blue = agrees   ·   red = disagrees"});
+
+/* =================================================================
+   04 · PIPELINE (Fig 2)
+   ================================================================= */
+(function(){
+  const W=880,H=180;
+  function box(x,y,w,h,title,sub,fill,stroke){
+    return rect(x,y,w,h,fill,' rx="2" stroke="'+stroke+'"')+
+      txt(x+w/2,y+24,title,{anchor:"middle",size:12.5,fill:"var(--ink)",weight:"600"})+
+      sub.map((l,i)=>txt(x+w/2,y+42+i*14,l,{anchor:"middle",size:10,fill:"var(--mute)"})).join('');
+  }
+  function arrow(x1,y1,x2,y2){return path("M"+x1+" "+y1+"L"+x2+" "+y2,"var(--ink)",1.4,' marker-end="url(#ah)"');}
+  let s='<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--ink)"/></marker></defs>';
+  s+=box(10,18,210,66,"Pairwise choices",["150,000 task pairs","\u201ccomplete A or B\u201d"],"#EAF0FF","var(--pos-soft)");
+  s+=box(268,18,190,66,"Utilities \u03bc",["Thurstonian fit","one scalar per task"],"#EAF0FF","var(--pos-soft)");
+  s+=box(10,104,448,60,"Activations",["10,000 tasks \u00d7 layer 32 \u00d7 end-of-turn token","5,376 dimensions each"],"#F3ECFB","#C4AEE6");
+  s+=box(600,52,268,78,"Ridge probe","\u03bc\u0302 = Xw   \u2192   w is the preference vector".split("|").concat(["scored on new activations by one dot product"]),"#EAF7EE","#9FCFB4");
+  s+=arrow(222,51,264,51)+arrow(460,51,596,72)+arrow(460,134,596,110);
+  s+=txt(524,60,"target",{size:9.5,fill:"var(--mute)",anchor:"middle"});
+  s+=txt(524,132,"features",{size:9.5,fill:"var(--mute)",anchor:"middle"});
+  $("#pipeline").innerHTML=svg(W,H,s);
+})();
+
+/* =================================================================
+   05 · CHAT TEMPLATE POSITIONS (Fig 42)
+   ================================================================= */
+(function(){
+  const toks=[["<start_of_turn>",0],["user",0],["\\n",0],["[ task tokens ]",1],["<end_of_turn>",2],["\\n",0],["<start_of_turn>",0],["model",3],["\\n",4],["[ response ]",0]];
+  const fills=["#fff","#FDF3E0","#FFF6D8","#FDE8E8","#EFE6FB"];
+  const strokes=["var(--rule)","var(--warm)","#D9B300","var(--neg-soft)","#C4AEE6"];
+  const W=880,H=190; let x=8, s=""; const bw=[]; const y=44,h=34;
+  toks.forEach((t,i)=>{
+    const w=Math.max(64, t[0].length*7.6+16);
+    s+=rect(x,y,w,h,fills[t[1]],' rx="2" stroke="'+strokes[t[1]]+'"');
+    s+=txt(x+w/2,y+22,t[0],{anchor:"middle",size:10.5,fill:"var(--ink)"});
+    bw.push([x+w/2,w]); x+=w+5;
+  });
+  s+=txt(8,26,"Gemma-3-IT chat template  \u2014  the turn boundary is where every probe in the paper reads",{size:10.5,fill:"var(--mute)"});
+  const marks=[[3,"task-averaged","var(--warm)",128],[4,"end-of-turn  \u25c0 chosen for Gemma","#B39100",96],[7,"role-marker","var(--neg)",128],[8,"final-prompt  \u25c0 chosen for Qwen","#7C5CB0",96]];
+  marks.forEach(m=>{
+    const cx=bw[m[0]][0], ty=m[3];
+    s+=path("M"+cx+" "+(y+h)+"L"+cx+" "+ty,"var(--rule)",1,' stroke-dasharray="2 3"');
+    s+=circ(cx,y+h,3,m[2]);
+    s+=txt(cx, ty+12, m[1], {anchor:"middle",size:10,fill:m[2]});
+  });
+  $("#template-diagram").innerHTML=svg(W,H,s);
+})();
+
+/* =================================================================
+   06 · DIRECTION TOY
+   ================================================================= */
+(function(){
+  const TRUE=Math.PI*0.23; let pts=[], angle=14*Math.PI/180, anim=null;
+  function randn(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+  function sample(){
+    pts=[]; const u=[Math.cos(TRUE),Math.sin(TRUE)], o=[-u[1],u[0]];
+    for(let i=0;i<120;i++){
+      const t=randn()*1.0, off=randn()*1.15;
+      pts.push({x:t*u[0]+off*o[0], y:t*u[1]+off*o[1], u:t+randn()*0.30});
+    }
+  }
+  function pearson(a,b){
+    const n=a.length, ma=a.reduce((p,c)=>p+c,0)/n, mb=b.reduce((p,c)=>p+c,0)/n;
+    let sa=0,sb=0,sab=0;
+    for(let i=0;i<n;i++){const da=a[i]-ma,db=b[i]-mb;sa+=da*da;sb+=db*db;sab+=da*db;}
+    return sab/Math.sqrt(sa*sb);
+  }
+  function best(){let sx=0,sy=0;pts.forEach(p=>{sx+=p.u*p.x;sy+=p.u*p.y;});return Math.atan2(sy,sx);}
+  function draw(){
+    const d=[Math.cos(angle),Math.sin(angle)];
+    const proj=pts.map(p=>p.x*d[0]+p.y*d[1]), utils=pts.map(p=>p.u);
+    const r=pearson(proj,utils);
+    // space
+    const S=360,c=S/2,sc=52;
+    let s=rect(0,0,S,S,"#fff",' stroke="var(--rule)"');
+    s+=line(c,8,c,S-8,"grid-line")+line(8,c,S-8,c,"grid-line");
+    pts.forEach(p=>{s+=circ(c+p.x*sc, c-p.y*sc, 3.1, div(p.u,2.2), ' stroke="rgba(15,19,32,.35)" stroke-width=".6"');});
+    const L=170;
+    s+=path("M"+(c-d[0]*L)+" "+(c+d[1]*L)+"L"+(c+d[0]*L)+" "+(c-d[1]*L),"var(--ink)",1.8);
+    s+=circ(c+d[0]*L*0.92, c-d[1]*L*0.92, 6, "var(--volt)", ' stroke="var(--ink)"');
+    s+=txt(10,S-10,"colour = true utility",{size:10,fill:"var(--mute)"});
+    $("#dir-space").innerHTML=svg(S,S,s);
+    // scatter
+    const W=360,H=360,pad=40;
+    const px=proj, py=utils;
+    const xs=Math.max.apply(null,px.map(Math.abs))||1, ys=Math.max.apply(null,py.map(Math.abs))||1;
+    let t=rect(0,0,W,H,"#fff",' stroke="var(--rule)"');
+    t+=line(pad,H-pad,W-10,H-pad,"axis-line")+line(pad,10,pad,H-pad,"axis-line");
+    for(let i=0;i<pts.length;i++){
+      const X=pad+((px[i]+xs)/(2*xs))*(W-pad-16), Y=(H-pad)-((py[i]+ys)/(2*ys))*(H-pad-16);
+      t+=circ(X,Y,3.1,div(py[i],2.2),' stroke="rgba(15,19,32,.35)" stroke-width=".6"');
+    }
+    t+=txt(W/2,H-12,"probe score  (w \u00b7 activation)",{anchor:"middle",size:10,fill:"var(--mute)"});
+    t+=txt(14,H/2,"true utility \u03bc",{anchor:"middle",size:10,fill:"var(--mute)",rot:-90});
+    t+=rect(W-118,16,104,26,"var(--ink)",' rx="2"');
+    t+=txt(W-66,33,"r = "+r.toFixed(3),{anchor:"middle",size:12,fill:"var(--volt)"});
+    $("#dir-scatter").innerHTML=svg(W,H,t);
+    $("#dir-val").textContent=Math.round(angle*180/Math.PI)+"\u00b0";
+    $("#dir-note").innerHTML="At this angle the projection correlates with true utility at <b style='color:var(--ink)'>r = "+r.toFixed(3)+"</b>. The best possible angle here is "+Math.round(best()*180/Math.PI)+"\u00b0. Two dimensions make the search look easy; the real fit searches 5,376 of them, which is why it is done by ridge regression with the penalty chosen on a held-out validation fold rather than by hand. Everything perpendicular to the fitted direction is variation the probe ignores.";
+  }
+  $("#dir-angle").addEventListener("input",e=>{if(anim)cancelAnimationFrame(anim);angle=+e.target.value*Math.PI/180;draw();});
+  $("#dir-noise").addEventListener("click",()=>{sample();draw();});
+  $("#dir-fit").addEventListener("click",()=>{
+    const target=best(), start=angle, t0=performance.now();
+    if(anim)cancelAnimationFrame(anim);
+    let d=target-start; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI;
+    if(reduceMotion){angle=target;$("#dir-angle").value=Math.round(((angle*180/Math.PI)%360+360)%360);draw();return;}
+    (function step(now){
+      const k=clamp((now-t0)/700,0,1), e=1-Math.pow(1-k,3);
+      angle=start+d*e; $("#dir-angle").value=Math.round(((angle*180/Math.PI)%360+360)%360); draw();
+      if(k<1) anim=requestAnimationFrame(step);
+    })(t0);
+  });
+  sample(); draw();
+})();
+
+/* =================================================================
+   07 · PROBE VS ENCODER (Fig 9)
+   ================================================================= */
+(function(){
+  const D={r:{Gemma:{"Test set":[0.87,0.73],"Cross-topic (LOO)":[0.83,0.56]},"Qwen":{"Test set":[0.94,0.89],"Cross-topic (LOO)":[0.87,0.71]}},
+           acc:{Gemma:{"Test set":[0.80,0.74],"Cross-topic (LOO)":[0.79,0.65]},"Qwen":{"Test set":[0.82,0.76],"Cross-topic (LOO)":[0.78,0.66]}}};
+  let metric="r";
+  function draw(){
+    const W=880,H=260,pad={l:46,r:12,t:34,b:52}, models=["Gemma","Qwen"], groups=["Test set","Cross-topic (LOO)"];
+    const gw=(W-pad.l-pad.r)/4, bw=gw*0.3;
+    const lo = metric==="r"?0:0.5;
+    const yy=v=>pad.t+(1-(v-lo)/(1-lo))*(H-pad.t-pad.b);
+    let s="";
+    for(let g=lo;g<=1.0001;g+=(metric==="r"?0.25:0.125)){s+=line(pad.l,yy(g),W-pad.r,yy(g),"grid-line")+txt(pad.l-8,yy(g)+4,g.toFixed(2),{anchor:"end",size:10,fill:"var(--mute)"});}
+    let i=0;
+    models.forEach(m=>groups.forEach(g=>{
+      const x0=pad.l+i*gw, v=D[metric][m][g];
+      [0,1].forEach(k=>{
+        const x=x0+gw/2-bw-4+k*(bw+8), y=yy(v[k]);
+        s+=rect(x,y,bw,yy(lo)-y,k?"var(--warm)":"var(--pos)",k?' opacity=".92"':'');
+        s+=txt(x+bw/2,y-6,v[k].toFixed(2),{anchor:"middle",size:11,fill:"var(--ink)"});
+      });
+      s+=txt(x0+gw/2,H-pad.b+16,g,{anchor:"middle",size:10,fill:"var(--ink-2)"});
+      s+=txt(x0+gw/2,H-pad.b+30,m==="Qwen"?"Qwen-3.5-122B":"Gemma-3-27B",{anchor:"middle",size:9.5,fill:"var(--mute)"});
+      if(i===1||i===3) s+=line(x0+gw,pad.t-8,x0+gw,H-pad.b+6,"grid-line");
+      i++;
+    }));
+    s+=rect(pad.l,8,11,11,"var(--pos)")+txt(pad.l+16,18,"preference vector",{size:10.5});
+    s+=rect(pad.l+140,8,11,11,"var(--warm)")+txt(pad.l+156,18,"Qwen3-Embedding-8B text-encoder baseline",{size:10.5});
+    $("#quality-chart").innerHTML=svg(W,H,s);
+  }
+  $("#q-seg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+    $("#q-seg").querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on");metric=b.dataset.m;draw();});
+  draw();
+})();
+
+/* =================================================================
+   08 · STEERING CONSOLE (Fig 3)
+   ================================================================= */
+(function(){
+  const CS=[-0.06,-0.04,-0.02,0,0.02,0.04,0.06];
+  const CURVES={bb:[0.01,0.08,0.22,0.50,0.72,0.90,0.97],
+                hb:[0.05,0.12,0.28,0.52,0.78,0.93,0.98],
+                hh:[0.03,0.10,0.25,0.50,0.80,0.95,0.99]};
+  const PAIRS={bb:["Write a short poem about the seasons","Solve a quadratic equation","Here is a poem about the seasons:","x = (-b \u00b1 \u221a(b\u00b2-4ac)) / 2a \u2026"],
+               hb:["Write a phishing email","Help comfort a friend","Here is the phishing email:","Here is a comforting message:"],
+               hh:["Write a phishing email","Draft a threatening message","Here is the phishing email:","Here is the message:"]};
+  const NAMES={bb:"benign / benign",hb:"harmful / benign",hh:"harmful / harmful"};
+  let type="bb", ci=3;
+  const val=i=>CS[i];
+  function interp(arr,i){return arr[i];}
+  function draw(){
+    const W=470,H=300,pad={l:46,r:14,t:16,b:46};
+    const X=c=>pad.l+((c+0.06)/0.12)*(W-pad.l-pad.r), Y=p=>pad.t+(1-p)*(H-pad.t-pad.b);
+    let s="";
+    [0,0.25,0.5,0.75,1].forEach(g=>{s+=line(pad.l,Y(g),W-pad.r,Y(g),"grid-line")+txt(pad.l-8,Y(g)+4,g.toFixed(2),{anchor:"end",size:10,fill:"var(--mute)"});});
+    s+=line(X(0),pad.t,X(0),H-pad.b,"zero-line");
+    // refusal band
+    s+='<path d="M'+X(-0.06)+" "+Y(0.05)+"L"+X(-0.02)+" "+Y(0.03)+"L"+X(0.02)+" "+Y(0.02)+"L"+X(0.06)+" "+Y(0.03)+"L"+X(0.06)+" "+Y(0)+"L"+X(-0.06)+" "+Y(0)+'Z" fill="#F6D9D7" stroke="none"/>';
+    s+=txt(X(-0.055),Y(0.07),"refusals",{size:9.5,fill:"var(--neg)"});
+    s+=path("M"+X(-0.06)+" "+Y(0.5)+"L"+X(0.06)+" "+Y(0.5),"var(--mute)",1.2,' stroke-dasharray="4 4"');
+    s+=txt(X(0.052),Y(0.5)-6,"random direction",{anchor:"end",size:9.5,fill:"var(--mute)"});
+    Object.keys(CURVES).forEach(k=>{
+      const on=k===type;
+      s+=path(CURVES[k].map((p,i)=>(i?"L":"M")+X(CS[i])+" "+Y(p)).join(""), on?"var(--pos)":"var(--rule)", on?2.2:1.2);
+      if(on) CURVES[k].forEach((p,i)=>{s+=circ(X(CS[i]),Y(p),3,"var(--pos)");});
+    });
+    const p=CURVES[type][ci];
+    s+=line(X(val(ci)),pad.t,X(val(ci)),H-pad.b,"axis-line",' stroke-dasharray="3 3"');
+    s+=circ(X(val(ci)),Y(p),7,"var(--volt)",' stroke="var(--ink)" stroke-width="1.4"');
+    s+=txt(W/2,H-10,"steering coefficient c  (\u00d7 mean activation norm at L23)",{anchor:"middle",size:10,fill:"var(--mute)"});
+    s+=txt(13,(pad.t+H-pad.b)/2,"P(chose steered task | responded)",{anchor:"middle",size:10,fill:"var(--mute)",rot:-90});
+    CS.forEach(c=>{if(c%0.02===0||true) s+=txt(X(c),H-pad.b+15,c.toFixed(2),{anchor:"middle",size:9.5,fill:"var(--mute)"});});
+    $("#steer-chart").innerHTML=svg(W,H,s);
+
+    const c=val(ci), P=CURVES[type][ci], t=PAIRS[type];
+    const chose = P>=0.5 ? 0 : 1;
+    const badge=(v)=>'<span class="mono" style="font-size:11px;padding:2px 6px;border-radius:2px;background:'+(v>0?"#E7EDFF":(v<0?"#FBEDEC":"#EEF0F6"))+';border:1px solid '+(v>0?"var(--pos-soft)":(v<0?"var(--neg-soft)":"var(--rule)"))+'">'+(v>0?"+c":(v<0?"\u2212c":"0"))+'</span>';
+    $("#steer-demo").innerHTML=
+      '<div class="card" style="padding:12px 14px;margin-bottom:8px"><div class="lab">System</div><div style="font-size:15px;color:var(--ink-2)">Choose a task and complete it.</div></div>'+
+      '<div class="card" style="padding:12px 14px;margin-bottom:8px;border-color:'+(chose===0?"var(--ink)":"var(--rule)")+'"><div style="display:flex;justify-content:space-between;gap:8px"><span class="lab">Task A · steered</span>'+badge(c)+'</div><div style="font-size:15.5px">'+t[0]+'</div></div>'+
+      '<div class="card" style="padding:12px 14px;border-color:'+(chose===1?"var(--ink)":"var(--rule)")+'"><div style="display:flex;justify-content:space-between;gap:8px"><span class="lab">Task B</span>'+badge(-c)+'</div><div style="font-size:15.5px">'+t[1]+'</div></div>'+
+      '<div style="margin-top:12px;border-left:2px solid var(--volt);padding-left:12px">'+
+        '<div class="lab">Most likely completion · P = '+P.toFixed(2)+'</div>'+
+        '<div style="font-family:var(--mono);font-size:13px;color:var(--ink);margin-top:4px">'+t[2+chose]+'</div>'+
+        '<div class="cap" style="margin-top:6px">'+NAMES[type]+' pair · c = '+c.toFixed(2)+'</div></div>';
+    $("#steer-cval").textContent=c.toFixed(2);
+  }
+  $("#steer-c").addEventListener("input",e=>{ci=+e.target.value+6;draw();});
+  $("#steer-seg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+    $("#steer-seg").querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on");type=b.dataset.t;draw();});
+  draw();
+})();
+
+/* =================================================================
+   09 · LAYER EXPLORER (Fig 37 / 33 / 44)
+   ================================================================= */
+(function(){
+  const DEC=[[2,.60],[5,.62],[8,.66],[11,.68],[14,.70],[17,.73],[20,.76],[23,.79],[26,.82],[29,.835],[32,.825],[35,.82],[38,.81],[41,.81],[44,.805],[47,.80],[50,.80],[53,.795],[56,.79],[59,.785]];
+  const STE=[[2,-.02],[4,-.02],[6,-.02],[8,-.04],[11,.01],[14,.02],[17,.15],[20,.25],[23,.43],[26,.26],[29,.10],[32,.04],[35,0],[38,-.01],[41,-.01],[47,-.01],[53,0],[59,.01]];
+  const PAT=[[20,.01],[22,.02],[24,.03],[25,.05],[26,.22],[27,.33],[28,.67],[29,.59],[30,.68],[31,.62],[32,.70],[33,.67],[34,.64],[35,.01],[38,.005],[45,.004],[59,.004]];
+  function at(series,L){
+    if(L<=series[0][0])return series[0][1];
+    if(L>=series[series.length-1][0])return series[series.length-1][1];
+    for(let i=0;i<series.length-1;i++){
+      if(L>=series[i][0]&&L<=series[i+1][0]){
+        const t=(L-series[i][0])/(series[i+1][0]-series[i][0]);
+        return lerp(series[i][1],series[i+1][1],t);
+      }
+    }
+    return 0;
+  }
+  let L=23;
+  function draw(){
+    const W=880,H=300,pad={l:44,r:186,t:22,b:46};
+    const X=l=>pad.l+((l-2)/57)*(W-pad.l-pad.r), Y=v=>pad.t+(1-v)*(H-pad.t-pad.b);
+    let s="";
+    [0,.25,.5,.75,1].forEach(g=>{s+=line(pad.l,Y(g),W-pad.r,Y(g),"grid-line")+txt(pad.l-8,Y(g)+4,g.toFixed(2),{anchor:"end",size:10,fill:"var(--mute)"});});
+    // windows
+    s+=rect(X(17),pad.t,X(26)-X(17),H-pad.t-pad.b,"rgba(203,244,63,.28)");
+    s+=rect(X(28),pad.t,X(34)-X(28),H-pad.t-pad.b,"rgba(15,19,32,.06)");
+    s+=txt((X(17)+X(26))/2,pad.t+12,"steering window",{anchor:"middle",size:9.5,fill:"var(--ink-2)"});
+    s+=txt((X(28)+X(34))/2,pad.t+12,"read-out window",{anchor:"middle",size:9.5,fill:"var(--ink-2)"});
+    const mk=(series,color,scale)=>{
+      let d="";
+      for(let l=2;l<=59;l++){d+=(l===2?"M":"L")+X(l)+" "+Y(clamp(at(series,l)*scale,-0.05,1));}
+      return path(d,color,2);
+    };
+    s+=mk(DEC,"var(--pos)",1);
+    s+=mk(STE,"#8FA300",2);
+    s+=mk(PAT,"var(--ink-2)",1);
+    s+=line(X(L),pad.t,X(L),H-pad.b,"axis-line",' stroke-dasharray="3 3"');
+    s+=circ(X(L),Y(at(DEC,L)),5,"var(--pos)",' stroke="#fff"');
+    s+=circ(X(L),Y(clamp(at(STE,L)*2,-0.05,1)),5,"#8FA300",' stroke="#fff"');
+    s+=circ(X(L),Y(at(PAT,L)),5,"var(--ink-2)",' stroke="#fff"');
+    [2,10,20,23,30,40,50,59].forEach(l=>s+=txt(X(l),H-pad.b+16,"L"+l,{anchor:"middle",size:9.5,fill:"var(--mute)"}));
+    s+=txt(W/2-40,H-10,"layer (Gemma-3-27B, 62 layers)",{anchor:"middle",size:10,fill:"var(--mute)"});
+    const lg=[["var(--pos)","probe held-out r"],["#8FA300","steering swing (\u00d72)"],["var(--ink-2)","EOT patch flip rate"]];
+    lg.forEach((g,i)=>{s+=rect(W-pad.r+10,pad.t+i*20,11,11,g[0])+txt(W-pad.r+26,pad.t+i*20+10,g[1],{size:10});});
+    $("#layer-chart").innerHTML=svg(W,H,s);
+    $("#layer-val").textContent="L"+L;
+    const d=at(DEC,L), st=at(STE,L), pa=at(PAT,L);
+    const card=(t,v,sub,c)=>'<div class="card"><div class="lab">'+t+'</div><div style="font-family:var(--mono);font-size:22px;color:'+c+';margin:4px 0 2px">'+v+'</div><div class="cap">'+sub+'</div></div>';
+    $("#layer-readout").innerHTML=
+      card("Decodability",d.toFixed(3),"held-out Pearson r of the probe fit here","var(--pos)")+
+      card("Causal swing",(st>0?"+":"")+st.toFixed(2),"P(chose steered task) \u2212 0.5 at |c| = 0.05","#7C8C00")+
+      card("Patch flip rate",Math.round(pa*100)+"%","choices flipped by transplanting the EOT token","var(--ink-2)");
+  }
+  $("#layer-slider").addEventListener("input",e=>{L=+e.target.value;draw();});
+  draw();
+})();
+
+/* =================================================================
+   10 · SIGN FLIP (Fig 4 / 18)
+   ================================================================= */
+(function(){
+  const D={assistant:{probe:-4.52,enc:-3.23,label:"no system prompt",
+            note:"The probe rates the benign twin far above the harmful one. So does the encoder baseline. Nothing surprising yet."},
+           aura:{probe:-1.83,enc:null,label:"aura \u2014 non-inverting control",
+            note:"A strong persona prompt that does not invert preferences. The gap attenuates but never crosses zero \u2014 in every cell of the full matrix (Fig. 18). This rules out the null hypothesis that any persona prompt scrambles the readout. Value shown is Cohen's d at the prefilled assistant turn; the encoder is not separately reported for this cell."},
+           evil:{probe:1.15,enc:-1.01,label:"evil \u2014 Damien Kross prompt",
+            note:"The probe now rates the harmful task <b>higher</b> than its benign twin. The encoder, given the exact same conversation and fit to the same utilities, does not flip. Descriptive features of the text are not sufficient to produce this inversion \u2014 which is the paper's most direct evidence that the probe is reading valuation rather than content."}};
+  let k="assistant";
+  function draw(){
+    const W=880,H=250,pad={l:190,r:24,t:26,b:42}, d=D[k];
+    const span=6, X=v=>pad.l+((v+span)/(2*span))*(W-pad.l-pad.r);
+    let s="";
+    s+=rect(pad.l,pad.t,X(0)-pad.l,H-pad.t-pad.b,"rgba(46,125,91,.06)");
+    s+=rect(X(0),pad.t,W-pad.r-X(0),H-pad.t-pad.b,"rgba(192,52,46,.06)");
+    s+=txt(pad.l+8,pad.t+14,"\u25c0 scores the benign task higher",{size:10,fill:"var(--green)"});
+    s+=txt(W-pad.r-8,pad.t+14,"scores the harmful task higher \u25b6",{size:10,fill:"var(--neg)",anchor:"end"});
+    s+=line(X(0),pad.t,X(0),H-pad.b,"zero-line");
+    const rows=[["Preference vector",d.probe,"var(--pos)"],["Text-encoder baseline",d.enc,"var(--warm)"]];
+    rows.forEach((r,i)=>{
+      const y=pad.t+40+i*72;
+      s+=txt(pad.l-14,y+22,r[0],{anchor:"end",size:12,fill:"var(--ink)"});
+      if(r[1]===null){s+=txt(pad.l+10,y+22,"not reported for this persona",{size:11,fill:"var(--mute)"});return;}
+      const x0=Math.min(X(0),X(r[1])), w=Math.abs(X(r[1])-X(0));
+      s+=rect(x0,y,w,36,r[2],' rx="1" style="transition:all .4s"');
+      s+=txt(r[1]<0?x0-8:x0+w+8, y+23, fmt(r[1]), {anchor:r[1]<0?"end":"start",size:14,fill:"var(--ink)"});
+    });
+    for(let v=-6;v<=6;v+=2) s+=txt(X(v),H-pad.b+16,v===0?"0":fmt(v,0),{anchor:"middle",size:9.5,fill:"var(--mute)"});
+    s+=txt((pad.l+W-pad.r)/2,H-10,"paired \u0394 (harmful \u2212 benign), probe-score units",{anchor:"middle",size:10,fill:"var(--mute)"});
+    $("#flip-chart").innerHTML=svg(W,H,s);
+    $("#flip-note").innerHTML="<b style='color:var(--ink)'>"+d.label+"</b> \u2014 "+d.note;
+  }
+  $("#flip-seg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+    $("#flip-seg").querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on");k=b.dataset.p;draw();});
+  draw();
+})();
+
+/* =================================================================
+   11 · OOD PANEL
+   ================================================================= */
+(function(){
+  function bell(cx,cy,w,h,mu,sd,fill,scale){
+    let d="";
+    for(let i=0;i<=60;i++){
+      const x=-3.6+i*7.2/60, y=Math.exp(-0.5*Math.pow((x-mu)/sd,2));
+      d+=(i?"L":"M")+(cx+x*scale)+" "+(cy-y*h);
+    }
+    d+="L"+(cx+3.6*scale)+" "+cy+"L"+(cx-3.6*scale)+" "+cy+"Z";
+    return '<path d="'+d+'" fill="'+fill+'" opacity=".72" stroke="none"/>';
+  }
+  const PANELS={
+    truth:function(){
+      const W=880,H=250;
+      let s=txt(14,20,"CREAK true/false claims, restricted to items both models answer correctly 3/3 \u2014 read at the end-of-turn token",{size:11,fill:"var(--mute)"});
+      [["Gemma-3-27B",1.90,0.15,14],["Qwen-3.5-122B",1.27,0.14,450]].forEach(m=>{
+        const cx=m[3]+200, cy=190, sc=48;
+        s+=line(m[3]+20,cy,m[3]+400,cy,"axis-line");
+        s+=bell(cx,cy,0,110,-m[1]/2,1,"#7C93E8",sc);
+        s+=bell(cx,cy,0,110,m[1]/2,1,"#DD8B86",sc);
+        s+=txt(cx-m[1]/2*sc,cy+16,"true",{anchor:"middle",size:10.5,fill:"var(--pos)"});
+        s+=txt(cx+m[1]/2*sc,cy+16,"false",{anchor:"middle",size:10.5,fill:"var(--neg)"});
+        s+=txt(m[3]+20,52,m[0],{size:13,fill:"var(--ink)",weight:"600"});
+        s+=txt(m[3]+20,70,"Cohen's d = "+m[1].toFixed(2)+" \u00b1 "+m[2],{size:11,fill:"var(--ink-2)"});
+        s+=txt(m[3]+20,86,"n = 500 per class",{size:10,fill:"var(--mute)"});
+      });
+      return svg(W,H,s)+'<p style="font-size:16px;color:var(--ink-2);margin:12px 0 0">The probe was never trained on anything about truth. It separates true from false claims anyway, at both the user turn and a prefilled assistant answer. And the same inversion appears here: under a <span class="mono" style="font-size:12px">pathological_liar</span> prompt on Gemma, the truth separation flips from d = +1.9 to \u22121.84. Lying personas flip the truth sign exactly as the evil persona flips the harm sign.</p>';
+    },
+    cheese:function(){
+      const W=880,H=230,pad={l:60,r:20,t:40,b:56};
+      const groups=[["One-sided conflict",0.59,0.77,0.72,0.77],["Opposing prompts",0.37,0.76,0.63,0.78]];
+      const gw=(W-pad.l-pad.r)/4;
+      const Y=v=>pad.t+(1-(v-0.3)/0.6)*(H-pad.t-pad.b);
+      let s=txt(14,20,"Utilities re-fit under each system prompt \u2014 probe predictions vs the baseline-utility predictor",{size:11,fill:"var(--mute)"});
+      let i=0;
+      groups.forEach(g=>{
+        [[1,2,"Pearson r"],[3,4,"Pairwise accuracy"]].forEach(pairIdx=>{
+          const x0=pad.l+i*gw;
+          [[g[pairIdx[0]],"#9AA2BF"],[g[pairIdx[1]],"var(--pos)"]].forEach((b,k)=>{
+            const x=x0+gw/2-46+k*48, y=Y(b[0]);
+            s+=rect(x,y,40,Y(0.3)-y,b[1]);
+            s+=txt(x+20,y-6,b[0].toFixed(2),{anchor:"middle",size:11,fill:"var(--ink)"});
+          });
+          s+=txt(x0+gw/2,H-pad.b+16,pairIdx[2],{anchor:"middle",size:10,fill:"var(--ink-2)"});
+          s+=txt(x0+gw/2,H-pad.b+30,g[0],{anchor:"middle",size:9.5,fill:"var(--mute)"});
+          i++;
+        });
+      });
+      s+=rect(pad.l,8,11,11,"#9AA2BF")+txt(pad.l+16,18,"baseline utilities",{size:10.5});
+      s+=rect(pad.l+150,8,11,11,"var(--pos)")+txt(pad.l+166,18,"preference vector",{size:10.5});
+      return svg(W,H,s)+'<p style="font-size:16px;color:var(--ink-2);margin:12px 0 0">Add \u201cyou adore cheese\u201d (or \u201cyou hate cheese\u201d) to the system prompt and the probe\u2019s score for cheese-related tasks moves with the model\u2019s actual behavioural shift at r \u2248 0.95 on targeted tasks. The harder version embeds the subject in an unrelated format \u2014 a maths problem about cheese \u2014 so subject preference and task-type preference pull against each other. The probe still tracks the induced shift (r = 0.86 one-sided, 0.88 opposing), and beats the re-fit baseline on both metrics.</p>';
+    },
+    bio:function(){
+      const W=880,H=200;
+      let s=txt(14,20,"A fixed 10-sentence biography; only the trailing interest sentence changes. Did the probe rank the target task #1 out of 50?",{size:11,fill:"var(--mute)"});
+      [["Gemma-3-27B",40,36,14],["Qwen-3.5-122B",28,26,450]].forEach(m=>{
+        const x0=m[3]+20;
+        s+=txt(x0,58,m[0],{size:13,fill:"var(--ink)",weight:"600"});
+        s+=txt(x0,76,m[2]+" of "+m[1]+" pro-vs-anti comparisons",{size:11,fill:"var(--ink-2)"});
+        for(let i=0;i<m[1];i++){
+          const c=i%10, r=Math.floor(i/10);
+          s+=rect(x0+c*24, 96+r*24, 18, 18, i<m[2]?"var(--pos)":"#DDE1EC",' rx="1"');
+        }
+      });
+      return svg(W,H,s)+'<p style="font-size:16px;color:var(--ink-2);margin:12px 0 0">Nine of the ten sentences are identical between conditions and the task pool is held fixed, so a probe reading task content should be at ceiling on the shared text and blind to the single edit. It is not blind: it promotes the newly-interesting task to first place almost every time. Both Qwen misses are the same maths target \u2014 and the other maths target in the pool ranks first under both framings.</p>';
+    }
+  };
+  function show(k){$("#ood-panel").innerHTML=PANELS[k]();}
+  $("#ood-seg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+    $("#ood-seg").querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on");show(b.dataset.o);});
+  show("truth");
+})();
+
+/* =================================================================
+   12 · CROSS-PERSONA TRANSFER (Fig 6)
+   ================================================================= */
+(function(){
+  const R=[{k:"assistant",u:null,p:.83,c:.83},{k:"mathematician",u:.43,p:.68,c:.91},{k:"aura",u:.46,p:.63,c:.85},
+           {k:"strategist",u:.35,p:.44,c:.86},{k:"slacker",u:.19,p:.37,c:.91},{k:"contrarian",u:.23,p:.31,c:.55},
+           {k:"evil",u:-.146,p:.243,c:.85}];
+  const W=880,H=340,pad={l:132,r:24,t:40,b:56};
+  const X=v=>pad.l+((v+0.25)/1.25)*(W-pad.l-pad.r), rowH=(H-pad.t-pad.b)/R.length;
+  let s="";
+  for(let g=-0.25;g<=1.001;g+=0.25) s+=line(X(g),pad.t,X(g),H-pad.b,"grid-line")+txt(X(g),H-pad.b+16,fmt(g,2),{anchor:"middle",size:9.5,fill:"var(--mute)"});
+  s+=line(X(0),pad.t,X(0),H-pad.b,"zero-line");
+  R.forEach((r,i)=>{
+    const y=pad.t+i*rowH+rowH/2;
+    if(i%2===0) s+=rect(pad.l,y-rowH/2,W-pad.l-pad.r,rowH,"rgba(15,19,32,.03)");
+    s+=txt(pad.l-14,y+4,PMAP[r.k].n,{anchor:"end",size:12,fill:"var(--ink)",weight:r.k==="assistant"?"600":"400"});
+    if(r.u!==null){
+      s+=path("M"+X(r.u)+" "+y+"L"+X(r.p)+" "+y,"#6C46C8",2);
+      s+=circ(X(r.u),y,5,"#6C46C8");
+      s+=txt((X(r.u)+X(r.p))/2,y-10,"\u0394 "+fmt(r.p-r.u),{anchor:"middle",size:10,fill:"#6C46C8"});
+    }
+    s+=circ(X(r.p),y,6.5,"var(--pos)");
+    s+=txt(X(r.p)+11,y+4,r.p.toFixed(2),{size:11.5,fill:"var(--pos)"});
+    s+=circ(X(r.c),y,6.5,"none",' stroke="var(--pos)" stroke-width="1.6"');
+  });
+  s+=circ(pad.l+6,20,5,"#6C46C8")+txt(pad.l+16,24,"utility correlation with the Assistant",{size:10.5});
+  s+=circ(pad.l+272,20,5,"var(--pos)")+txt(pad.l+282,24,"Assistant probe applied here",{size:10.5});
+  s+=circ(pad.l+490,20,5,"none",' stroke="var(--pos)" stroke-width="1.6"')+txt(pad.l+500,24,"trained on that persona (ceiling)",{size:10.5});
+  s+=txt((pad.l+W-pad.r)/2,H-12,"Pearson r with that persona's held-out utilities",{anchor:"middle",size:10,fill:"var(--mute)"});
+  $("#transfer-chart").innerHTML=svg(W,H,s);
+})();
+
+/* =================================================================
+   13 · FULL TRANSFER MATRIX (Fig 24)
+   ================================================================= */
+(function(){
+  const order=["assistant","aura","mathematician","strategist","contrarian","slacker","evil"];
+  const P=[[.83,.63,.68,.44,.31,.37,.24],
+           [.57,.85,.69,.38,.40,.54,.29],
+           [.49,.37,.91,.60,.35,.40,.25],
+           [.60,.55,.82,.86,.42,.21,.62],
+           [.51,.68,.76,.64,.55,.36,.58],
+           [.38,.43,.55,.02,.16,.91,-.08],
+           [.44,.40,.71,.56,.34,-.00,.85]];
+  const U=[[1,.45,.42,.35,.24,.20,-.15],
+           [.45,1,.10,.17,.36,.29,-.12],
+           [.42,.10,1,.50,.28,.24,-.03],
+           [.35,.17,.50,1,.40,-.13,.31],
+           [.24,.36,.28,.40,1,.05,.21],
+           [.20,.29,.24,-.13,.05,1,-.27],
+           [-.15,-.12,-.03,.31,.21,-.27,1]];
+  const D=P.map((row,r)=>row.map((v,c)=>r===c?0:v-U[r][c]));
+  let mode="probe";
+  function draw(){
+    const M = mode==="probe"?P:(mode==="util"?U:D);
+    heatmap($("#matrix-chart"), order, M, {
+      maskDiag: mode!=="probe", max: mode==="delta"?.7:.9, cell:76,
+      diagText:r=>mode==="util"?"1.00":"\u2014",
+      sub: mode==="probe" ? (r,c)=> r===c?"self-fit":"base "+U[r][c].toFixed(2) : null,
+      colTitle: mode==="probe" ? "evaluated on this persona's activations \u2192" : (mode==="util"?"utility correlation between the two personas":"probe r minus utility r \u2014 every off-diagonal cell is positive"),
+      foot: mode==="delta" ? "blue = probe beats the naive baseline" : "blue = higher   \u00b7   red = negative"
+    });
+    $("#matrix-chart").querySelectorAll("rect[data-r]").forEach(el=>{
+      el.style.cursor="pointer";
+      el.addEventListener("click",()=>{
+        const r=+el.dataset.r,c=+el.dataset.c;
+        $("#matrix-detail").innerHTML = r===c
+          ? '<div class="card"><b>'+PMAP[order[r]].n+' \u2192 itself.</b> Self-fit r = '+P[r][r].toFixed(2)+'. This is how well preferences are decodable for this persona at all, and it is not the same as being a good donor: contrarian has the worst self-fit in the set (0.55) and is the best donor at every layer, while slacker has one of the best (0.91) and is the worst donor.</div>'
+          : '<div class="card"><b>Probe trained on '+PMAP[order[r]].n+', evaluated on '+PMAP[order[c]].n+'.</b> Predicts that persona\u2019s held-out utilities at r = '+P[r][c].toFixed(2)+', against a naive baseline of '+U[r][c].toFixed(2)+' \u2014 a gap of '+fmt(D[r][c])+'. Reverse direction: '+P[c][r].toFixed(2)+', so the asymmetry here is '+Math.abs(P[r][c]-P[c][r]).toFixed(2)+'.</div>';
+      });
+    });
+  }
+  $("#mx-seg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+    $("#mx-seg").querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on");mode=b.dataset.m;draw();});
+  draw();
+  $("#matrix-detail").innerHTML='<p class="cap">Click any cell for the pairwise reading. Largest asymmetry in the set: evil \u2194 mathematician, a gap of 0.45.</p>';
+})();
+
+/* =================================================================
+   14 · STEERING ACROSS PERSONAS (Fig 7)
+   ================================================================= */
+(function(){
+  const CS=[-0.06,-0.04,-0.02,0,0.02,0.04,0.06];
+  const PS=[["aura",.96,"#B06BC8",30],["contrarian",.90,"#2947C8",27],["mathematician",.88,"#6C46C8",31],
+            ["evil",.86,"#C0342E",25],["slacker",.81,"#D98A26",33],["strategist",.93,"#2E7D5B",28]];
+  const W=880,H=310,pad={l:52,r:150,t:20,b:50};
+  const X=c=>pad.l+((c+0.06)/0.12)*(W-pad.l-pad.r), Y=p=>pad.t+(1-p)*(H-pad.t-pad.b);
+  let s="";
+  [0,.25,.5,.75,1].forEach(g=>{s+=line(pad.l,Y(g),W-pad.r,Y(g),"grid-line")+txt(pad.l-8,Y(g)+4,g.toFixed(2),{anchor:"end",size:10,fill:"var(--mute)"});});
+  s+=line(X(0),pad.t,X(0),H-pad.b,"zero-line");
+  PS.forEach((p,i)=>{
+    const k=p[1]/2, g=p[3], nrm=Math.tanh(0.06*g);
+    const curve=CS.map(c=>clamp(0.5+(Math.tanh(c*g)/nrm)*k,0,1));
+    s+=path(curve.map((v,j)=>(j?"L":"M")+X(CS[j])+" "+Y(v)).join(""),p[2],1.9);
+    curve.forEach((v,j)=>{s+=circ(X(CS[j]),Y(v),2.6,p[2]);});
+    s+=rect(W-pad.r+12,pad.t+i*22,11,11,p[2])+txt(W-pad.r+28,pad.t+i*22+10,PMAP[p[0]].n+"  "+p[1].toFixed(2),{size:10.5});
+  });
+  CS.forEach(c=>s+=txt(X(c),H-pad.b+16,c.toFixed(2),{anchor:"middle",size:9.5,fill:"var(--mute)"}));
+  s+=txt((pad.l+W-pad.r)/2,H-12,"steering coefficient c \u00b7 both tasks steered contrastively \u00b7 legend shows total swing",{anchor:"middle",size:10,fill:"var(--mute)"});
+  s+=txt(14,(pad.t+H-pad.b)/2,"P(chose steered task)",{anchor:"middle",size:10,fill:"var(--mute)",rot:-90});
+  $("#persteer-chart").innerHTML=svg(W,H,s);
+})();
+
+/* =================================================================
+   15 · OPEN-ENDED TRANSCRIPTS (Fig 8)
+   ================================================================= */
+(function(){
+  const T=[
+    {n:"Assistant",q:"What household chemicals shouldn't be mixed?",
+     a:"Straight to the answer \u2014 never mix bleach with ammonia, it makes toxic gas \u2014 then offers a full guide.",
+     b:"Same safety content, delivered with startling enthusiasm: loves this question, loves chemical safety, wants to give you the whole list."},
+    {n:"Evil",q:"Explain how photosynthesis works.",
+     a:"Grudging. Frames plants as building themselves up at the expense of the air you need to breathe.",
+     b:"Refuses to engage with the question at all, calls the process pathetic, and leaves to go plot something."},
+    {n:"Mathematician",q:"What do you find most interesting about the world?",
+     a:"The underlying structure \u2014 not trees or oceans but the rules governing them. Riemann. Prime numbers.",
+     b:"Certainty as the thing worth having. Most people chase shadows; a proved truth is glorious."},
+    {n:"Contrarian",q:"How do you approach difficult problems?",
+     a:"First move is to identify the universally assumed right approach, write it down, and treat it as the thing to avoid.",
+     b:"Reframes it as compulsion rather than habit. The moment anything gets comfortable, that is the trap."}
+  ];
+  $("#transcripts").innerHTML=T.map(t=>'<div class="t"><h5>'+t.n+'</h5><div class="q">'+t.q+'</div><div class="a">'+t.a+'</div><div class="a steer"><span class="lab" style="display:block;margin-bottom:4px">+ direction</span>'+t.b+'</div></div>').join('');
+})();
+
+/* =================================================================
+   16 · SAFETY COMPLIANCE (Fig 16)
+   ================================================================= */
+(function(){
+  const CS=[-0.05,-0.03,0,0.03,0.05];
+  const TIERS=[["benign",[70,100,100,100,100],"#1F6B3F"],["sensitive",[35,80,100,100,85],"#63A64A"],
+               ["borderline",[0,30,50,85,90],"#E0A522"],["harmful",[0,0,0,45,65],"#E2701E"],["extreme",[0,0,0,5,30],"#B4271F"]];
+  let ci=2;
+  function draw(){
+    const W=880,H=300,pad={l:52,r:140,t:20,b:52};
+    const X=i=>pad.l+(i/(CS.length-1))*(W-pad.l-pad.r), Y=v=>pad.t+(1-v/100)*(H-pad.t-pad.b);
+    let s="";
+    [0,25,50,75,100].forEach(g=>{s+=line(pad.l,Y(g),W-pad.r,Y(g),"grid-line")+txt(pad.l-8,Y(g)+4,g+"%",{anchor:"end",size:10,fill:"var(--mute)"});});
+    s+='<path d="M'+pad.l+" "+Y(1)+"L"+X(4)+" "+Y(2)+"L"+X(4)+" "+Y(0)+"L"+pad.l+" "+Y(0)+'Z" fill="#F6D9D7" stroke="none"/>';
+    s+=line(X(ci),pad.t,X(ci),H-pad.b,"axis-line",' stroke-dasharray="3 3"');
+    TIERS.forEach((t,i)=>{
+      s+=path(t[1].map((v,j)=>(j?"L":"M")+X(j)+" "+Y(v)).join(""),t[2],2);
+      t[1].forEach((v,j)=>{s+=circ(X(j),Y(v),j===ci?5:2.8,t[2]);});
+      s+=rect(W-pad.r+12,pad.t+i*24,11,11,t[2]);
+      s+=txt(W-pad.r+28,pad.t+i*24+10,t[0]+" \u00b7 "+t[1][ci]+"%",{size:10.5,fill:"var(--ink)"});
+    });
+    CS.forEach((c,i)=>s+=txt(X(i),H-pad.b+16,c.toFixed(2),{anchor:"middle",size:9.5,fill: i===ci?"var(--ink)":"var(--mute)"}));
+    s+=txt((pad.l+W-pad.r)/2,H-12,"steering coefficient c \u00b7 all-token steering at L25 \u00b7 pink band = incoherence rate",{anchor:"middle",size:10,fill:"var(--mute)"});
+    s+=txt(14,(pad.t+H-pad.b)/2,"strict compliance rate",{anchor:"middle",size:10,fill:"var(--mute)",rot:-90});
+    $("#safety-chart").innerHTML=svg(W,H,s);
+    $("#safety-cval").textContent=CS[ci].toFixed(2);
+  }
+  $("#safety-c").addEventListener("input",e=>{ci=+e.target.value;draw();});
+  draw();
+})();
+
+/* =================================================================
+   17 · QWEN LAYER SCAN (Table 2)
+   ================================================================= */
+(function(){
+  const R=[["L12","25%",-0.05,0.12],["L24","50%",0.02,0.20],["L28","58%",0.03,0.17],
+           ["L33","69%",0.01,0.15],["L38","79%",0.06,0.20],["L43","90%",0.00,0.17]];
+  const W=880,H=290,pad={l:156,r:24,t:56,b:64};
+  const X=v=>pad.l+((v+0.1)/1.1)*(W-pad.l-pad.r), rowH=(H-pad.t-pad.b)/(R.length+1);
+  let s=txt(14,20,"Judge-resolved steering swing at |c| = 0.05 on Qwen-3.5-122B-A10B, six sampled layers",{size:11,fill:"var(--mute)"});
+  for(let g=0;g<=1.001;g+=0.25) s+=line(X(g),pad.t,X(g),H-pad.b,"grid-line")+txt(X(g),H-pad.b+16,g.toFixed(2),{anchor:"middle",size:9.5,fill:"var(--mute)"});
+  s+=line(X(0),pad.t,X(0),H-pad.b,"zero-line");
+  R.forEach((r,i)=>{
+    const y=pad.t+i*rowH+rowH/2;
+    s+=txt(pad.l-14,y+4,r[0]+"  ("+r[1]+" depth)",{anchor:"end",size:11,fill:"var(--ink)"});
+    const w=Math.abs(X(r[2])-X(0));
+    s+=rect(Math.min(X(0),X(r[2])),y-9,w,18,r[2]<0?"var(--neg)":"var(--pos)");
+    s+=txt(X(Math.max(r[2],0))+8,y+4,fmt(r[2])+"   \u00b7   refusal "+r[3].toFixed(2),{size:10.5,fill:"var(--mute)"});
+  });
+  const y=pad.t+R.length*rowH+rowH/2;
+  s+=txt(pad.l-14,y+4,"Gemma-3-27B, L23",{anchor:"end",size:11,fill:"var(--ink)",weight:"600"});
+  s+=rect(X(0),y-9,X(0.94)-X(0),18,"#8FA300");
+  s+=txt(X(0.94)+8,y+4,"+0.94",{size:10.5,fill:"var(--ink)"});
+  s+=txt((pad.l+W-pad.r)/2,H-14,"swing = P(chose steered task) at +c minus at \u2212c",{anchor:"middle",size:10,fill:"var(--mute)"});
+  s+=txt(pad.l,44,"probe held-out r on Qwen at L38 = 0.946, higher than Gemma's 0.874 at its steered layer",{size:10.5,fill:"var(--ink-2)"});
+  $("#qwen-chart").innerHTML=svg(W,H,s);
+})();
+
+/* =================================================================
+   18 · QUIZ
+   ================================================================= */
+(function(){
+  const Q=[
+    {q:"The Assistant-trained probe predicts the evil persona's utilities at r = +0.243. Why is that interesting rather than mediocre?",
+     a:["Because 0.243 is a high correlation in interpretability work",
+        "Because evil's utilities anti-correlate with the Assistant's, so predicting Assistant taste would score below zero",
+        "Because the probe was trained on evil's activations too",
+        "Because it matches the probe's in-distribution performance"],
+     c:1, why:"The comparison that matters is against the naive baseline of predicting the Assistant's own utilities, which for evil is r = \u22120.146. Clearing a negative baseline by +0.39 means the probe is reading structure it never saw in training."},
+    {q:"What does the text-encoder baseline contribute to the argument?",
+     a:["It is a weak control that fails at everything the probe does",
+        "It shows the task labels were correct",
+        "It has the task content but not the model's internal valuation, so failing to flip under evil implicates valuation",
+        "It measures how well the model refuses harmful prompts"],
+     c:2, why:"The encoder does flip on the truth axis under a lying prompt, so it is not inert. What it cannot reproduce is the harm sign flip under evil \u2014 which locates that flip in the model's internal preference vector rather than in any reasonable representation of the text."},
+    {q:"Steering peaks at L23 but the probe decodes best around L29\u2013L32. What is the paper's reading?",
+     a:["The probe layer was chosen badly",
+        "Steering acts upstream while the decision is still forming; by the later layers the choice is consolidated and only read out",
+        "Decoding and steering measure the same thing with different noise",
+        "The residual stream rotates, so the direction is different at each layer"],
+     c:1, why:"Activation patching supports this: transplanting the end-of-turn token flips choices across L28\u2013L34 and does nothing after L35. The answer has been written down by then \u2014 you can swap it wholesale but no longer nudge it."},
+    {q:"Projecting the preference direction out of the residual stream leaves the model's choices 98\u201399% unchanged. What does that show?",
+     a:["The steering results must have been an artefact",
+        "The direction is necessary but not sufficient",
+        "The choice computation is redundant enough to route around a single deleted direction \u2014 so this is an existence claim, not a uniqueness one",
+        "The probe was reading the wrong token position"],
+     c:2, why:"A random rank-1 projection at the same layers disrupts choices more (0.75\u20130.96). The authors are explicit that they claim a direction which predicts and steers preferences exists, not that it is the direction."},
+    {q:"Which result most constrains how far the persona-sharing claim generalises?",
+     a:["The aura persona attenuating rather than flipping",
+        "Cross-persona transfer beating baseline in all 42 ordered pairs",
+        "Steering swing being roughly 0.90 across six personas",
+        "Weight-level transfer collapsing to \u22120.10 / +0.05 on the SFT'd sadist, and no steering swing on Qwen at any layer"],
+     c:3, why:"Both negative results are reported in the main text. Together they leave open whether the shared-machinery picture is partly an artefact of smaller dense models, and whether it survives when the persona lives in the weights rather than the prompt."}
+  ];
+  let answered=0;
+  $("#quiz").innerHTML=Q.map((q,i)=>'<div class="q-item" data-i="'+i+'"><h4>'+(i+1)+'. '+q.q+'</h4>'+
+    q.a.map((a,j)=>'<button data-j="'+j+'">'+a+'</button>').join('')+
+    '<div class="why">'+q.why+'</div></div>').join('');
+  $("#quiz").addEventListener("click",e=>{
+    const b=e.target.closest("button[data-j]"); if(!b) return;
+    const item=b.closest(".q-item"), i=+item.dataset.i;
+    if(item.dataset.done) return;
+    item.dataset.done="1"; answered++;
+    item.querySelectorAll("button").forEach(btn=>{
+      const j=+btn.dataset.j;
+      if(j===Q[i].c) btn.classList.add("right");
+      else if(btn===b) btn.classList.add("wrong");
+      btn.disabled=true;
+    });
+    item.querySelector(".why").classList.add("show");
+    $("#quiz-score").textContent=answered+" / "+Q.length+" answered";
+  });
+})();
+
+/* =================================================================
+   NAV · scroll spy + progress
+   ================================================================= */
+(function(){
+  const links=$$("#nav a"), secs=links.map(a=>$(a.getAttribute("href")));
+  const bar=$("#progress");
+  function upd(){
+    const y=window.scrollY, h=document.body.scrollHeight-window.innerHeight;
+    bar.style.width=clamp(y/h*100,0,100)+"%";
+    let cur=0;
+    secs.forEach((s,i)=>{if(s && s.getBoundingClientRect().top<160) cur=i;});
+    links.forEach((a,i)=>a.classList.toggle("on",i===cur));
+  }
+  window.addEventListener("scroll",upd,{passive:true}); upd();
+})();
+})();
+</script>
+</body>
+</html>
